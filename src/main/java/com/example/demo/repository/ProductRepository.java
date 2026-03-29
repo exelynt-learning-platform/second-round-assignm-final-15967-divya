@@ -23,4 +23,6 @@ public interface ProductRepository extends JpaRepository<Product, Integer> {
 	@Transactional
 	@Query(value = "UPDATE product SET isdeleted = 1 WHERE id = ?1", nativeQuery = true)
 	int softDeleteProduct( Integer id);
+	
+	Page<Product> findByIsdeleted(int isDeleted, Pageable pageable);
 }

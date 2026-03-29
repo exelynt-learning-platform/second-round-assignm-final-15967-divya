@@ -59,28 +59,36 @@ public class ProductController {
 
 		Page<Product> products = productService.getProductsByOwner(email, page, size);
 
+		if (products.isEmpty()) {
+			throw new RuntimeException("No products found for this user");
+		}
 		return ResponseEntity.ok(products);
 	}
-
 
 	@GetMapping("/getProductById/{id}")
 	public ResponseEntity<Product> getById(@PathVariable("id") Integer id) {
 
-	    Product product = productService.getById(id);
+		Product product = productService.getById(id);
 
-	    return ResponseEntity.ok(product);
+		return ResponseEntity.ok(product);
 	}
 
 	@PutMapping("/{id}")
 	public ResponseEntity<Product> update(@PathVariable("id") Integer id, @RequestBody Product product) {
-		 Product update = productService.update(id, product);
-		 return ResponseEntity.status(HttpStatus.ACCEPTED).body(update);	}
+		Product update = productService.update(id, product);
+		return ResponseEntity.status(HttpStatus.ACCEPTED).body(update);
+	}
 
 	@DeleteMapping("/deleteProductById/{id}")
-	public ResponseEntity<String>  delete(@PathVariable("id") Integer id) {
-		System.out.println("delete");
-		productService.delete(id);
-	   return ResponseEntity.ok("Product deleted successfully"); 
+	public ResponseEntity<?> delete(@PathVariable("id") Integer id) {
+
+		boolean deleted = productService.delete(id);
+
+		if (deleted) {
+			return ResponseEntity.ok("Product deleted successfully");
+		}
+
+		return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Product not found");
 	}
 
 }

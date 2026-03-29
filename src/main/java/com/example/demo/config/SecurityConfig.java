@@ -23,10 +23,14 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
         http.csrf(csrf -> csrf.disable())
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/auth/**").permitAll()
-                .anyRequest().authenticated()
-            )
+        .authorizeHttpRequests(auth -> auth
+        	    .requestMatchers("/auth/**").permitAll()
+        	    .requestMatchers("/cart/**").hasRole("USER")
+        	    .requestMatchers("/products/**").hasRole("ADMIN")
+        	    .requestMatchers("/userproducts/**").permitAll()
+
+        	    .anyRequest().authenticated()
+        	)
             .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
         http.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);

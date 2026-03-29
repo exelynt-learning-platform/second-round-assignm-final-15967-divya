@@ -49,7 +49,9 @@ public class ProductServiceImpl implements ProductService {
 		Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
 
 		User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
-
+		if (user == null) {
+		    throw new ProductException("User not found");
+		}
 		Page<Product> products = productRepository.findAllProductsByOwnerid(user.getId(), pageable);
 
 		if (products.isEmpty()) {
@@ -85,15 +87,29 @@ public class ProductServiceImpl implements ProductService {
 
 	@Override
 	@CacheEvict(value = "productsCache", allEntries = true)
-	public String delete(Integer id) {
+	public boolean delete(Integer id) {
 
-		int updatedRows = productRepository.softDeleteProduct(id);
-System.out.println("updatedRows  "+updatedRows);
-		if (updatedRows == 0) {
-			throw new ProductException("Product not found with id: " + id);
-		}
+	    int updatedRows = productRepository.softDeleteProduct(id);
 
-		return "Product deleted successfully";
+	    if (updatedRows == 0) {
+	        throw new ProductException("Product not found with id: " + id);
+	    }
+
+	    return true;
+	}
+
+	
+	public Page<Product> getAllProducts(int page, int size) {
+
+	    Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
+
+	    Page<Product> products = productRepository.findByIsdeleted(0, pageable);
+
+	    if (products.isEmpty()) {
+	        throw new RuntimeException("No products found");
+	    }
+
+	    return products;
 	}
 
 }
