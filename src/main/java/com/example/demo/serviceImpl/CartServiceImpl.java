@@ -60,6 +60,7 @@ public class CartServiceImpl implements CartService {
 	        cart.setQuantity(quantity);
 	        cart.setTotalPrice(quantity * product.getPrice());
 	        cart.setProductName(product.getName());
+	        cart.setPrice(product.getPrice()); 
 
 	        return cartRepository.save(cart);
 	    }
@@ -76,20 +77,28 @@ public class CartServiceImpl implements CartService {
 	@Override
 	public Cart updateCart(String email, Integer productId, int quantity) {
 
-		User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
+	    User user = userRepository.findByEmail(email)
+	            .orElseThrow(() -> new RuntimeException("User not found"));
 
-		Cart cart = cartRepository.findByUserIdAndProductId(user.getId(), productId);
+	    Cart cart = cartRepository.findByUserIdAndProductId(user.getId(), productId);
 
-		if (cart == null) {
-			throw new RuntimeException("Cart item not found");
-		}
+	    if (cart == null) {
+	        throw new RuntimeException("Cart item not found");
+	    }
 
-		cart.setQuantity(quantity);
-		cart.setTotalPrice(quantity * cart.getPrice());
+	    Product product = productRepository.findById(productId)
+	            .orElseThrow(() -> new RuntimeException("Product not found"));
 
-		return cartRepository.save(cart);
+	    if (product.getStockQuantity() < quantity) {
+	        throw new RuntimeException("Insufficient stock. Available: " + product.getStockQuantity());
+	    }
+
+	    cart.setQuantity(quantity);
+	    cart.setPrice(product.getPrice());
+	    cart.setTotalPrice(quantity * product.getPrice()); 
+
+	    return cartRepository.save(cart);
 	}
-
 	@Override
 	public boolean removeFromCart(String email, Integer productId) {
 

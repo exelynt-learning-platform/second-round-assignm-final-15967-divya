@@ -28,6 +28,8 @@ public class SecurityConfig {
         	    .requestMatchers("/cart/**").hasRole("USER")
         	    .requestMatchers("/products/**").hasRole("ADMIN")
         	    .requestMatchers("/userproducts/**").permitAll()
+        	    .requestMatchers("/orders/**").permitAll()
+
 
         	    .anyRequest().authenticated()
         	)
