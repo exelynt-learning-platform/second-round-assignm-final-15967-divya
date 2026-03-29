@@ -27,8 +27,8 @@ public class UserService {
 
         // If any  role  is not assigned then consider as USER
         if (user.getRole() == null) {
-            user.setRole("ROLE_USER");
-        }
+        	user.setRole("ROLE_USER"); 
+        	}
 
         return userRepository.save(user);
     }
