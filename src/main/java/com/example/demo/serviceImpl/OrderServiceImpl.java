@@ -43,6 +43,9 @@ public class OrderServiceImpl implements OrderService {
 	@Override
 	public Order placeOrder(String email, String shippingAddress) {
 
+		if (shippingAddress == null || shippingAddress.trim().isEmpty()) {
+		    throw new RuntimeException("Shipping address cannot be empty");
+		}
 		User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
 
 		List<Cart> cartItems = cartRepository.findByUserId(user.getId());

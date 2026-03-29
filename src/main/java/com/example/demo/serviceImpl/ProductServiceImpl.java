@@ -29,10 +29,8 @@ public class ProductServiceImpl implements ProductService {
 	@CacheEvict(value = "productsCache", allEntries = true)
 	public Product create(Product product, String email) {
 
-		if (productRepository.existsByNameAndPriceAndStockQuantity(product.getName(), product.getPrice(),
-				product.getStockQuantity())) {
-
-			throw new RuntimeException("Product already exists");
+		if (productRepository.existsByName(product.getName())) {
+		    throw new RuntimeException("Product already exists");
 		}
 
 		User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));

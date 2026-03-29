@@ -2,6 +2,7 @@ package com.example.demo.Entity;
 
 import java.util.*;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -26,6 +27,7 @@ public class Product {
 	private Integer id;
 
 	@NotBlank(message = "Name is required")
+	@Column(unique = true)
 	private String name;
 
 	@NotBlank(message = "Description is required")

@@ -12,7 +12,7 @@ import jakarta.transaction.Transactional;
 
 public interface ProductRepository extends JpaRepository<Product, Integer> {
 	
-	boolean existsByNameAndPriceAndStockQuantity(String name, double price,int quantity);
+	boolean existsByName(String name);
 	
 	@Query(
 		    value = "SELECT * FROM product WHERE addedbyuserid = ?1 AND isdeleted = 0",nativeQuery = true

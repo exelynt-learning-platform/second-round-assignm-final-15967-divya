@@ -16,6 +16,8 @@ import com.example.demo.Entity.User;
 import com.example.demo.exception.OrderException;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.service.OrderService;
+
+import jakarta.validation.constraints.NotBlank;
 @RestController
 @RequestMapping("/orders")
 public class OrderController {
@@ -32,7 +34,7 @@ public class OrderController {
     }
 
     @PostMapping("/place")
-    public Order placeOrder(@RequestParam("shippingAddress") String shippingAddress) {
+    public Order placeOrder(@RequestParam("shippingAddress") @NotBlank String shippingAddress) {
         return orderService.placeOrder(getEmail(), shippingAddress);
     }
 
@@ -47,7 +49,7 @@ public class OrderController {
         User user = userRepository.findByEmail(getEmail())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        if (!"ROLE_ADMIN".equals(user.getRole())) {
+        if (!"ADMIN".equals(user.getRole())) {
             throw new RuntimeException("Access Denied");
         }
 
