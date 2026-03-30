@@ -3,8 +3,6 @@ package com.example.demo.serviceImpl;
 import java.util.Date;
 import java.util.List;
 
-import jakarta.transaction.Transactional;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -13,6 +11,7 @@ import com.example.demo.Entity.Order;
 import com.example.demo.Entity.OrderItem;
 import com.example.demo.Entity.Product;
 import com.example.demo.Entity.User;
+import com.example.demo.constants.AppConstants;
 import com.example.demo.exception.OrderException;
 import com.example.demo.repository.CartRepository;
 import com.example.demo.repository.OrderItemRepository;
@@ -20,6 +19,8 @@ import com.example.demo.repository.OrderRepository;
 import com.example.demo.repository.ProductRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.service.OrderService;
+
+import jakarta.transaction.Transactional;
 
 @Service
 public class OrderServiceImpl implements OrderService {
@@ -43,19 +44,43 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public Order placeOrder(String email, String shippingAddress) {
 
-    	validateShippingAddress(shippingAddress);
+        validateShippingAddress(shippingAddress);
 
-    	User user = getUserByEmail(email);   // must come first
+        User user = getUserByEmail(email); 
 
-    	
-    	List<Cart> cartItems = cartRepository.findByUser(user);
+        List<Cart> cartItems = cartRepository.findByUser(user);
 
-    	if (cartItems.isEmpty()) {
-    	    throw new OrderException("Cart is empty");
-    	}
+        if (cartItems == null || cartItems.isEmpty()) {
+            throw new OrderException(AppConstants.CART_EMPTY);
+        }
 
         Order order = createOrder(user, shippingAddress);
         Order savedOrder = orderRepository.save(order);
+
+        double totalPrice = processCartItems(cartItems, savedOrder);
+
+        savedOrder.setTotalPrice(totalPrice);
+        orderRepository.save(savedOrder);
+
+        cartRepository.deleteAll(cartItems);
+
+        return savedOrder;
+    }
+
+    @Override
+    public List<Order> getMyOrders(String email) {
+        User user = getUserByEmail(email);
+        return orderRepository.findByUserId(user.getId());
+    }
+
+    @Override
+    public List<Order> getAllOrders() {
+        return orderRepository.findAll();
+    }
+
+    // ================= HELPER METHODS =================
+
+    private double processCartItems(List<Cart> cartItems, Order order) {
 
         double totalPrice = 0;
 
@@ -69,37 +94,32 @@ public class OrderServiceImpl implements OrderService {
 
             reduceStock(product, cart.getQuantity());
 
-            saveOrderItem(savedOrder, cart, product);
+            saveOrderItem(order, cart, product);
         }
 
-        savedOrder.setTotalPrice(totalPrice);
-        orderRepository.save(savedOrder);
-
-        cartRepository.deleteAll(cartItems);
-
-        return savedOrder;
+        return totalPrice;
     }
-
 
     private void validateShippingAddress(String address) {
         if (address == null || address.trim().length() < 10 || address.length() > 200) {
-            throw new OrderException("Invalid shipping address (10–200 characters required)");
+            throw new OrderException(AppConstants.INVALID_ADDRESS);
         }
     }
 
     private User getUserByEmail(String email) {
         return userRepository.findByEmail(email)
-                .orElseThrow(() -> new OrderException("User not found"));
+                .orElseThrow(() -> new OrderException(AppConstants.USER_NOT_FOUND));
     }
 
     private Product getProductById(Integer productId) {
         return productRepository.findById(productId)
-                .orElseThrow(() -> new OrderException("Product not found with id: " + productId));
+                .orElseThrow(() ->
+                        new OrderException(AppConstants.PRODUCT_NOT_FOUND + productId));
     }
 
     private void validateStock(Product product, int quantity) {
         if (product.getStockQuantity() < quantity) {
-            throw new OrderException("Insufficient stock for product: " + product.getName());
+            throw new OrderException(AppConstants.INSUFFICIENT_STOCK + product.getName());
         }
     }
 
@@ -109,6 +129,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private void saveOrderItem(Order order, Cart cart, Product product) {
+
         OrderItem item = new OrderItem();
         item.setOrder(order);
         item.setProduct(product);
@@ -120,24 +141,14 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private Order createOrder(User user, String shippingAddress) {
+
         Order order = new Order();
         order.setUser(user);
         order.setShippingAddress(shippingAddress);
-        order.setPaymentStatus("PENDING");
-        order.setStatus("CREATED");
+        order.setPaymentStatus(AppConstants.PAYMENT_PENDING);
+        order.setStatus(AppConstants.ORDER_CREATED);
         order.setCreatedDate(new Date());
+
         return order;
-    }
-
-
-    @Override
-    public List<Order> getMyOrders(String email) {
-        User user = getUserByEmail(email);
-        return orderRepository.findByUserId(user.getId());
-    }
-
-    @Override
-    public List<Order> getAllOrders() {
-        return orderRepository.findAll();
     }
 }

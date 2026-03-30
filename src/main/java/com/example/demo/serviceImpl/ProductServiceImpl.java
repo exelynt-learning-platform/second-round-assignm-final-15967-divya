@@ -67,9 +67,7 @@ public class ProductServiceImpl implements ProductService {
 
 		Product existingProduct = productRepository.findById(id)
 				.orElseThrow(() -> new ProductException("Product not found with id: " + id));
-		if (existingProduct == null) {  // defensive check (optional but clean)
-		    throw new RuntimeException("Product is null");
-		}
+
 		if (existingProduct.getIsdeleted() == 1) {
 			throw new ProductException("Cannot update deleted product");
 		}

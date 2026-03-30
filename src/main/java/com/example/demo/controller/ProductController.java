@@ -6,20 +6,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import com.example.demo.Entity.Order;
 import com.example.demo.Entity.Product;
+import com.example.demo.constants.AppConstants;
+import com.example.demo.security.SecurityUtil;
 import com.example.demo.service.OrderService;
 import com.example.demo.service.ProductService;
 
@@ -30,67 +22,86 @@ import lombok.extern.slf4j.Slf4j;
 @RequestMapping("/products")
 public class ProductController {
 
-	@Autowired
-	private ProductService productService;
-	@Autowired
-	OrderService orderService; 
+    @Autowired
+    private ProductService productService;
 
+    @Autowired
+    private OrderService orderService;
 
-	@PostMapping("/saveProduct")
-	public ResponseEntity<?> create(@RequestBody Product product) {
-		log.debug("save product {} ", product);
-		Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-		String email = auth.getName();
-		Product savedProduct = productService.create(product, email);
-		return ResponseEntity.status(HttpStatus.CREATED).body(savedProduct);
-	}
+    @PostMapping("/saveProduct")
+    public ResponseEntity<Product> create(@RequestBody Product product) {
 
-	@GetMapping("/getProductsByOwner")
-	public ResponseEntity<?> getProductsByOwner(@RequestParam(name = "page", defaultValue = "0") int page,
-			@RequestParam(name = "size", defaultValue = "10") int size) {
+        String email = SecurityUtil.getCurrentUserEmail();
+        log.debug("Creating product for user: {}", email);
 
-		Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-		String email = auth.getName();
+        Product savedProduct = productService.create(product, email);
 
-		log.info("Fetching products for user: {}", email);
+        return ResponseEntity.status(HttpStatus.CREATED).body(savedProduct);
+    }
 
-		Page<Product> products = productService.getProductsByOwner(email, page, size);
+    @GetMapping("/getProductsByOwner")
+    public ResponseEntity<Page<Product>> getProductsByOwner(
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size) {
 
-		if (products.isEmpty()) {
-			throw new RuntimeException("No products found for this user");
-		}
-		return ResponseEntity.ok(products);
-	}
+        String email = SecurityUtil.getCurrentUserEmail();
 
-	@GetMapping("/getProductById/{id}")
-	public ResponseEntity<Product> getById(@PathVariable("id") Integer id) {
+        log.info("Fetching products for user: {}", email);
 
-		Product product = productService.getById(id);
+        Page<Product> products = productService.getProductsByOwner(email, page, size);
 
-		return ResponseEntity.ok(product);
-	}
+        if (products == null || products.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
 
-	@PutMapping("/{id}")
-	public ResponseEntity<Product> update(@PathVariable("id") Integer id, @RequestBody Product product) {
-		Product update = productService.update(id, product);
-		return ResponseEntity.status(HttpStatus.ACCEPTED).body(update);
-	}
+        return ResponseEntity.ok(products);
+    }
 
-	@DeleteMapping("/deleteProductById/{id}")
-	public ResponseEntity<?> delete(@PathVariable("id") Integer id) {
+    @GetMapping("/getProductById/{id}")
+    public ResponseEntity<Product> getById(@PathVariable("id") Integer id) {
 
-		boolean deleted = productService.delete(id);
+        log.debug("Fetching product by id: {}", id);
 
-		if (deleted) {
-			return ResponseEntity.ok("Product deleted successfully");
-		}
+        Product product = productService.getById(id);
 
-		return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Product not found");
-	}
+        return ResponseEntity.ok(product);
+    }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<Product> update(@PathVariable("id") Integer id,
+                                          @RequestBody Product product) {
+
+        log.debug("Updating product id: {}", id);
+
+        Product updated = productService.update(id, product);
+
+        return ResponseEntity.ok(updated);
+    }
+
+    @DeleteMapping("/deleteProductById/{id}")
+    public ResponseEntity<String> delete(@PathVariable("id") Integer id) {
+
+        log.debug("Deleting product id: {}", id);
+
+        boolean deleted = productService.delete(id);
+
+        if (deleted) {
+            return ResponseEntity.ok(AppConstants.PRODUCT_DELETED);
+        }
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(AppConstants.PRODUCT_NOT_FOUND);
+    }
 
     @GetMapping("/getAllOrders")
-    public List<Order> allOrders() {
-        return orderService.getAllOrders();
+    public ResponseEntity<List<Order>> allOrders() {
+
+        List<Order> orders = orderService.getAllOrders();
+
+        if (orders == null || orders.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        }
+
+        return ResponseEntity.ok(orders);
     }
 }

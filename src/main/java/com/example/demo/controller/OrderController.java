@@ -9,6 +9,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import com.example.demo.Entity.Order;
+import com.example.demo.security.SecurityUtil;
 import com.example.demo.service.OrderService;
 
 @RestController
@@ -18,19 +19,16 @@ public class OrderController {
     @Autowired
     private OrderService orderService;
 
-    private String getEmail() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        return auth.getName();
-    }
+  
 
     @PostMapping("/place")
     public Order placeOrder(@RequestParam String shippingAddress) {
-        return orderService.placeOrder(getEmail(), shippingAddress);
+        return orderService.placeOrder(SecurityUtil.getCurrentUserEmail(), shippingAddress);
     }
 
     @GetMapping("/my")
     public List<Order> myOrders() {
-        return orderService.getMyOrders(getEmail());
+        return orderService.getMyOrders(SecurityUtil.getCurrentUserEmail());
     }
 
 }
