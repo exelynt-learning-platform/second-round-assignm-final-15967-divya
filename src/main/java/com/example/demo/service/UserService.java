@@ -1,6 +1,9 @@
 package com.example.demo.service;
 
+import java.util.Optional;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -16,33 +19,37 @@ public class UserService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    // Register
+    // ✅ Register
     public User register(User user) {
 
-        if (userRepository.findByEmail(user.getEmail()).isPresent()) {
+        Optional<User> existing = userRepository.findByEmail(user.getEmail());
+
+        if (existing.isPresent()) {
             throw new RuntimeException("Email already exists");
         }
 
+        // 🔐 Encrypt password
         user.setPassword(passwordEncoder.encode(user.getPassword()));
 
-        // If any  role  is not assigned then consider as USER
-        if (user.getRole() == null) {
-        	user.setRole("ROLE_USER"); 
-        	}
+        // ✅ Default Role
+        if (user.getRole() == null || user.getRole().isBlank()) {
+            user.setRole("ROLE_USER");
+        }
 
         return userRepository.save(user);
     }
 
-
+    // ✅ Login
     public User login(String email, String password) {
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
+        // 🔐 Password match
         if (!passwordEncoder.matches(password, user.getPassword())) {
-            throw new RuntimeException("Invalid password");
+            throw new BadCredentialsException("Invalid password");
         }
 
-        return user; 
+        return user;
     }
 }
