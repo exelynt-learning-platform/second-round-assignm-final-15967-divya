@@ -24,6 +24,9 @@ public class SecurityConfig {
     @Autowired
     private RateLimitFilter rateLimitFilter;
 
+    public static final String ROLE_USER = "USER";
+    public static final String ROLE_ADMIN = "ADMIN";
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
@@ -33,12 +36,12 @@ public class SecurityConfig {
                 .requestMatchers("/auth/**").permitAll()
 
                 // USER
-                .requestMatchers("/cart/**").hasRole("USER")
-                .requestMatchers("/orders/place").hasRole("USER")
-                .requestMatchers("/orders/my").hasRole("USER")
+                .requestMatchers("/cart/**").hasRole(ROLE_USER)
+                .requestMatchers("/orders/place").hasRole(ROLE_USER)
+                .requestMatchers("/orders/my").hasRole(ROLE_USER)
 
                 // ADMIN
-                .requestMatchers("/products/**").hasRole("ADMIN")
+                .requestMatchers("/products/**").hasRole(ROLE_ADMIN)
 
                 .anyRequest().authenticated()
             )
@@ -46,13 +49,11 @@ public class SecurityConfig {
                 sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             );
 
-        // 🔥 FIRST rate limit, THEN JWT
         http.addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class);
         http.addFilterAfter(jwtFilter, RateLimitFilter.class);
 
         return http.build();
     }
-
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();

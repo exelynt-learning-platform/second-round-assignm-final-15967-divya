@@ -43,14 +43,16 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public Order placeOrder(String email, String shippingAddress) {
 
-        validateShippingAddress(shippingAddress);
+    	validateShippingAddress(shippingAddress);
 
-        User user = getUserByEmail(email);
+    	User user = getUserByEmail(email);   // must come first
 
-        List<Cart> cartItems = cartRepository.findByUser(user);
-        if (cartItems.isEmpty()) {
-            throw new OrderException("Cart is empty");
-        }
+    	
+    	List<Cart> cartItems = cartRepository.findByUser(user);
+
+    	if (cartItems.isEmpty()) {
+    	    throw new OrderException("Cart is empty");
+    	}
 
         Order order = createOrder(user, shippingAddress);
         Order savedOrder = orderRepository.save(order);

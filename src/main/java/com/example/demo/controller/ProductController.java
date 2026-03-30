@@ -1,12 +1,12 @@
 package com.example.demo.controller;
 
 import java.util.List;
-import org.springframework.security.core.Authentication;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -35,11 +35,6 @@ public class ProductController {
 	@Autowired
 	OrderService orderService; 
 
-	// Delete
-	@RequestMapping("/hii")
-	public void hiiii() {
-		System.out.println("hiiii  admin");
-	}
 
 	@PostMapping("/saveProduct")
 	public ResponseEntity<?> create(@RequestBody Product product) {
@@ -47,8 +42,6 @@ public class ProductController {
 		Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 		String email = auth.getName();
 		Product savedProduct = productService.create(product, email);
-		System.out.println(savedProduct + "   savedProduct");
-
 		return ResponseEntity.status(HttpStatus.CREATED).body(savedProduct);
 	}
 

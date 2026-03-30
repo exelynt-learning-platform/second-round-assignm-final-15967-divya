@@ -28,18 +28,11 @@ public class ProductServiceImpl implements ProductService {
 
 	@CacheEvict(value = "productsCache", allEntries = true)
 	public Product create(Product product, String email) {
-		User user2 = userRepository.findByEmail(email).get();
-
-		if(user2==null)
-		{
-		    throw new RuntimeException("User Not Found");
-
-		}
-		if (productRepository.existsByNameAndUser(product.getName(), user2)) {
-		    throw new RuntimeException("Product already exists for this user");
-		}
-
 		User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
+
+	    if (productRepository.existsByNameAndUser(product.getName(), user)) {
+	        throw new ProductException("Product already exists for this user");
+	    }
 
 		product.setUser(user);
 		return productRepository.save(product);
@@ -48,19 +41,18 @@ public class ProductServiceImpl implements ProductService {
 	@Cacheable(value = "productsCache", key = "#email + '-' + #page + '-' + #size")
 	public Page<Product> getProductsByOwner(String email, int page, int size) {
 
-		Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
+	    Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
 
-		User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
-		if (user == null) {
-		    throw new ProductException("User not found");
-		}
-		Page<Product> products = productRepository.findByUser(user, pageable);
+	    User user = userRepository.findByEmail(email)
+	            .orElseThrow(() -> new ProductException("User not found"));
 
-		if (products.isEmpty()) {
-			throw new RuntimeException("No products found for this user");
-		}
+	    Page<Product> products = productRepository.findByUser(user, pageable);
 
-		return products;
+	    if (products.isEmpty()) {
+	        throw new ProductException("No products found for this user");
+	    }
+
+	    return products;
 	}
 
 	@Override
