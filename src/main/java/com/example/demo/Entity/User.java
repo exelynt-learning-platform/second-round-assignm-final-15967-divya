@@ -1,5 +1,8 @@
 package com.example.demo.Entity;
 
+import java.util.Date;
+import java.util.List;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -12,10 +15,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@AllArgsConstructor
-@NoArgsConstructor 
-@Setter
-@Getter
+@Getter@Setter@NoArgsConstructor@AllArgsConstructor
 public class User {
 
 	@Id

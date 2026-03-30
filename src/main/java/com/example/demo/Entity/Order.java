@@ -4,11 +4,15 @@ import java.util.Date;
 import java.util.List;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Table(name = "orders") 
 @Entity
-@Data
+@Getter@Setter@NoArgsConstructor@AllArgsConstructor
 public class Order {
 
     @Id

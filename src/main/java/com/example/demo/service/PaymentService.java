@@ -7,6 +7,7 @@ import com.stripe.model.checkout.Session;
 import com.stripe.param.checkout.SessionCreateParams;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -14,6 +15,12 @@ public class PaymentService {
 
     @Autowired
     private OrderRepository orderRepository;
+
+    @Value("${app.frontend.success-url}")
+    private String successUrl;
+
+    @Value("${app.frontend.cancel-url}")
+    private String cancelUrl;
 
     public String createPaymentSession(Integer orderId) throws Exception {
 
@@ -27,8 +34,8 @@ public class PaymentService {
         SessionCreateParams params =
                 SessionCreateParams.builder()
                         .setMode(SessionCreateParams.Mode.PAYMENT)
-                        .setSuccessUrl("http://localhost:3000/payment-success/" + orderId)
-                        .setCancelUrl("http://localhost:3000/payment-failed/" + orderId)
+                        .setSuccessUrl(successUrl + orderId)
+                        .setCancelUrl(cancelUrl + orderId)
                         .addLineItem(
                                 SessionCreateParams.LineItem.builder()
                                         .setQuantity(1L)
@@ -52,6 +59,7 @@ public class PaymentService {
     }
 
     public void success(Integer orderId) {
+
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new OrderException("Order not found"));
 
@@ -60,6 +68,7 @@ public class PaymentService {
     }
 
     public void failure(Integer orderId) {
+
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new OrderException("Order not found"));
 

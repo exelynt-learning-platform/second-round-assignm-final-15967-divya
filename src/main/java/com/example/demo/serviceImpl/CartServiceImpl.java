@@ -58,13 +58,13 @@ public class CartServiceImpl implements CartService {
         User user = getUserByEmail(email);
         Product product = getProductById(productId);
 
+        validateStock(product, quantity);
+
         Cart cart = cartRepository.findByUserAndProduct(user, product);
 
         if (cart == null) {
             throw new CartException(CART_NOT_FOUND);
         }
-
-        validateStock(product, quantity);
 
         cart.setQuantity(quantity);
         cart.setPrice(product.getPrice());
@@ -89,6 +89,7 @@ public class CartServiceImpl implements CartService {
         return true;
     }
 
+    // ================= PRIVATE METHODS =================
 
     private Cart updateExistingCart(Cart existingCart, Product product, int quantity) {
 
