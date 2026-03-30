@@ -1,11 +1,10 @@
 package com.example.demo.serviceImpl;
 
-import org.springframework.stereotype.Service;
-
-import com.example.demo.service.OrderService;
-
 import java.util.Date;
 import java.util.List;
+
+import jakarta.transaction.Transactional;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -20,98 +19,123 @@ import com.example.demo.repository.OrderItemRepository;
 import com.example.demo.repository.OrderRepository;
 import com.example.demo.repository.ProductRepository;
 import com.example.demo.repository.UserRepository;
-import com.example.demo.service.CartService;
+import com.example.demo.service.OrderService;
 
 @Service
 public class OrderServiceImpl implements OrderService {
 
-	@Autowired
-	private UserRepository userRepository;
+    @Autowired
+    private UserRepository userRepository;
 
-	@Autowired
-	private CartRepository cartRepository;
+    @Autowired
+    private CartRepository cartRepository;
 
-	@Autowired
-	private OrderRepository orderRepository;
+    @Autowired
+    private OrderRepository orderRepository;
 
-	@Autowired
-	private OrderItemRepository orderItemRepository;
+    @Autowired
+    private OrderItemRepository orderItemRepository;
 
-	@Autowired
-	private ProductRepository productRepository;
+    @Autowired
+    private ProductRepository productRepository;
 
-	@Override
-	public Order placeOrder(String email, String shippingAddress) {
+    @Transactional
+    @Override
+    public Order placeOrder(String email, String shippingAddress) {
 
-		if (shippingAddress == null || shippingAddress.trim().isEmpty()) {
-		    throw new RuntimeException("Shipping address cannot be empty");
-		}
-		User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
+        validateShippingAddress(shippingAddress);
 
-		List<Cart> cartItems = cartRepository.findByUserId(user.getId());
+        User user = getUserByEmail(email);
 
-		if (cartItems.isEmpty()) {
-			throw new RuntimeException("Cart is empty");
-		}
+        List<Cart> cartItems = cartRepository.findByUser(user);
+        if (cartItems.isEmpty()) {
+            throw new OrderException("Cart is empty");
+        }
 
-		double totalPrice = 0;
+        Order order = createOrder(user, shippingAddress);
+        Order savedOrder = orderRepository.save(order);
 
-		// Create Order first
-		Order order = new Order();
-		order.setUserId(user.getId());
-		order.setShippingAddress(shippingAddress);
-		order.setPaymentStatus("PENDING");
-		order.setStatus("CREATED");
-		order.setCreatedDate(new Date());
+        double totalPrice = 0;
 
-		Order savedOrder = orderRepository.save(order);
+        for (Cart cart : cartItems) {
 
-		// Create Order Items
-		for (Cart cart : cartItems) {
+            Product product = getProductById(cart.getProduct().getId());
 
-			Product product = productRepository.findById(cart.getProductId())
-					.orElseThrow(() -> new RuntimeException("Product not found"));
+            validateStock(product, cart.getQuantity());
 
-			if (product.getStockQuantity() < cart.getQuantity()) {
-				throw new RuntimeException("Insufficient stock for product: " + product.getName());
-			}
+            totalPrice += cart.getTotalPrice();
 
-			totalPrice += cart.getTotalPrice();
+            reduceStock(product, cart.getQuantity());
 
-			// reduce stock
-			product.setStockQuantity(product.getStockQuantity() - cart.getQuantity());
-			productRepository.save(product);
+            saveOrderItem(savedOrder, cart, product);
+        }
 
-			// Save OrderItem
-			OrderItem item = new OrderItem();
-			item.setOrderId(savedOrder.getId());
-			item.setProductId(product.getId());
-			item.setProductName(product.getName());
-			item.setQuantity(cart.getQuantity());
-			item.setPrice(product.getPrice());
+        savedOrder.setTotalPrice(totalPrice);
+        orderRepository.save(savedOrder);
 
-			orderItemRepository.save(item);
-		}
+        cartRepository.deleteAll(cartItems);
 
-		savedOrder.setTotalPrice(totalPrice);
-		orderRepository.save(savedOrder);
+        return savedOrder;
+    }
 
-		// clear cart
-		cartRepository.deleteAll(cartItems);
 
-		return savedOrder;
-	}
+    private void validateShippingAddress(String address) {
+        if (address == null || address.trim().length() < 10 || address.length() > 200) {
+            throw new OrderException("Invalid shipping address (10–200 characters required)");
+        }
+    }
 
-	@Override
-	public List<Order> getMyOrders(String email) {
+    private User getUserByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new OrderException("User not found"));
+    }
 
-		User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
+    private Product getProductById(Integer productId) {
+        return productRepository.findById(productId)
+                .orElseThrow(() -> new OrderException("Product not found with id: " + productId));
+    }
 
-		return orderRepository.findByUserId(user.getId());
-	}
+    private void validateStock(Product product, int quantity) {
+        if (product.getStockQuantity() < quantity) {
+            throw new OrderException("Insufficient stock for product: " + product.getName());
+        }
+    }
 
-	@Override
-	public List<Order> getAllOrders() {
-		return orderRepository.findAll();
-	}
+    private void reduceStock(Product product, int quantity) {
+        product.setStockQuantity(product.getStockQuantity() - quantity);
+        productRepository.save(product);
+    }
+
+    private void saveOrderItem(Order order, Cart cart, Product product) {
+        OrderItem item = new OrderItem();
+        item.setOrder(order);
+        item.setProduct(product);
+        item.setProductName(product.getName());
+        item.setQuantity(cart.getQuantity());
+        item.setPrice(product.getPrice());
+
+        orderItemRepository.save(item);
+    }
+
+    private Order createOrder(User user, String shippingAddress) {
+        Order order = new Order();
+        order.setUser(user);
+        order.setShippingAddress(shippingAddress);
+        order.setPaymentStatus("PENDING");
+        order.setStatus("CREATED");
+        order.setCreatedDate(new Date());
+        return order;
+    }
+
+
+    @Override
+    public List<Order> getMyOrders(String email) {
+        User user = getUserByEmail(email);
+        return orderRepository.findByUserId(user.getId());
+    }
+
+    @Override
+    public List<Order> getAllOrders() {
+        return orderRepository.findAll();
+    }
 }

@@ -4,35 +4,46 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.example.demo.DTO.LoginRequest;
 import com.example.demo.DTO.LoginResponse;
+import com.example.demo.DTO.RegisterRequest;
 import com.example.demo.Entity.User;
 import com.example.demo.security.JwtUtil;
 import com.example.demo.service.UserService;
+
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
 
-    @Autowired
-    private UserService userService;
+	@Autowired
+	private UserService userService;
 
-    @Autowired
-    private JwtUtil jwtUtil;
+	@Autowired
+	private JwtUtil jwtUtil;
 
-    // ✅ Register
-    @PostMapping("/register")
-    public ResponseEntity<User> register(@RequestBody User user) {
-        return ResponseEntity.ok(userService.register(user));
-    }
+	@PostMapping("/register")
+	public ResponseEntity<String> register(@Valid @RequestBody RegisterRequest request) {
 
-    // ✅ Login
-    @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@RequestBody User user) {
+		User user = new User();
+		user.setName(request.getName());
+		user.setEmail(request.getEmail());
+		user.setPassword(request.getPassword());
+		user.setRole(request.getRole());
 
-        User dbUser = userService.login(user.getEmail(), user.getPassword());
+		userService.register(user);
 
-        String token = jwtUtil.generateToken(dbUser.getEmail(), dbUser.getRole());
+		return ResponseEntity.ok("User registered successfully");
+	}
 
-        return ResponseEntity.ok(new LoginResponse(token, dbUser.getRole()));
-    }
+	@PostMapping("/login")
+	public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
+
+		User dbUser = userService.login(request.getEmail(), request.getPassword());
+
+		String token = jwtUtil.generateToken(dbUser.getEmail(), dbUser.getRole());
+
+		return ResponseEntity.ok(new LoginResponse(token, dbUser.getRole()));
+	}
 }

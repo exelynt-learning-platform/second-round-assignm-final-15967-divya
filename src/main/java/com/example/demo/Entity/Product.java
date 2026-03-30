@@ -7,6 +7,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -27,7 +29,6 @@ public class Product {
 	private Integer id;
 
 	@NotBlank(message = "Name is required")
-	@Column(unique = true)
 	private String name;
 
 	@NotBlank(message = "Description is required")
@@ -40,6 +41,8 @@ public class Product {
 	@NotBlank(message = "Image URL is required")
 	private String imageUrl;
 	private Date addeddate;
-	private int addedbyuserid;
+	@ManyToOne
+	@JoinColumn(name = "user_id")
+	private User user;
 	private int isdeleted;
 }

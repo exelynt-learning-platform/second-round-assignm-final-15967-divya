@@ -18,7 +18,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.demo.Entity.Order;
 import com.example.demo.Entity.Product;
+import com.example.demo.service.OrderService;
 import com.example.demo.service.ProductService;
 
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +32,8 @@ public class ProductController {
 
 	@Autowired
 	private ProductService productService;
+	@Autowired
+	OrderService orderService; 
 
 	// Delete
 	@RequestMapping("/hii")
@@ -91,4 +95,9 @@ public class ProductController {
 		return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Product not found");
 	}
 
+
+    @GetMapping("/getAllOrders")
+    public List<Order> allOrders() {
+        return orderService.getAllOrders();
+    }
 }

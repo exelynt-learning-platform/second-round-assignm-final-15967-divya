@@ -24,20 +24,13 @@ public class OrderController {
     }
 
     @PostMapping("/place")
-    @PreAuthorize("hasRole('USER')")
     public Order placeOrder(@RequestParam String shippingAddress) {
         return orderService.placeOrder(getEmail(), shippingAddress);
     }
 
     @GetMapping("/my")
-    @PreAuthorize("hasRole('USER')")
     public List<Order> myOrders() {
         return orderService.getMyOrders(getEmail());
     }
 
-    @GetMapping("/all")
-    @PreAuthorize("hasRole('ADMIN')")   // ✅ FIX
-    public List<Order> allOrders() {
-        return orderService.getAllOrders();
-    }
 }

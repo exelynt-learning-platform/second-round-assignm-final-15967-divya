@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import com.example.demo.Entity.Cart;
 import com.example.demo.Entity.Product;
 import com.example.demo.Entity.User;
+import com.example.demo.exception.CartException;
 import com.example.demo.repository.CartRepository;
 import com.example.demo.repository.ProductRepository;
 import com.example.demo.repository.UserRepository;
@@ -16,101 +17,111 @@ import com.example.demo.service.CartService;
 @Service
 public class CartServiceImpl implements CartService {
 
-	@Autowired
-	private CartRepository cartRepository;
+    @Autowired
+    private CartRepository cartRepository;
 
-	@Autowired
-	private UserRepository userRepository;
+    @Autowired
+    private UserRepository userRepository;
 
-	@Autowired
-	private ProductRepository productRepository;
+    @Autowired
+    private ProductRepository productRepository;
 
-	public Cart addToCart(String email, Integer productId, int quantity) {
+    @Override
+    public Cart addToCart(String email, Integer productId, int quantity) {
 
-	    User user = userRepository.findByEmail(email)
-	            .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = getUserByEmail(email);
+        Product product = getProductById(productId);
 
-	    Product product = productRepository.findById(productId)
-	            .orElseThrow(() -> new RuntimeException("Product not found"));
+        // 🔥 IMPORTANT: Update your repository accordingly
+        Cart existing = cartRepository.findByUserAndProduct(user, product);
 
-	    Cart existing = cartRepository.findByUserIdAndProductId(user.getId(), productId);
+        if (existing != null) {
 
-	    if (existing != null) {
+            int newQuantity = existing.getQuantity() + quantity;
 
-	        int newQuantity = existing.getQuantity() + quantity;
+            validateStock(product, newQuantity);
 
-	        if (product.getStockQuantity() < newQuantity) {
-	            throw new RuntimeException("Insufficient stock. Available: " + product.getStockQuantity());
-	        }
+            existing.setQuantity(newQuantity);
+            existing.setTotalPrice(newQuantity * product.getPrice());
 
-	        existing.setQuantity(newQuantity);
-	        existing.setTotalPrice(newQuantity * product.getPrice());
+            return cartRepository.save(existing);
+        }
 
-	        return cartRepository.save(existing);
+        // New Cart Item
+        validateStock(product, quantity);
 
-	    } else {
+        Cart cart = new Cart();
+        cart.setUser(user);
+        cart.setProduct(product);
+        cart.setQuantity(quantity);
+        cart.setPrice(product.getPrice());
+        cart.setProductName(product.getName());
+        cart.setTotalPrice(quantity * product.getPrice());
 
-	        if (product.getStockQuantity() < quantity) {
-	            throw new RuntimeException("Insufficient stock. Available: " + product.getStockQuantity());
-	        }
+        return cartRepository.save(cart);
+    }
 
-	        Cart cart = new Cart();
-	        cart.setUserId(user.getId());
-	        cart.setProductId(productId);
-	        cart.setQuantity(quantity);
-	        cart.setTotalPrice(quantity * product.getPrice());
-	        cart.setProductName(product.getName());
-	        cart.setPrice(product.getPrice()); 
+    // ✅ Get My Cart
+    @Override
+    public List<Cart> getMyCart(String email) {
+        User user = getUserByEmail(email);
+        return cartRepository.findByUser(user);
+    }
 
-	        return cartRepository.save(cart);
-	    }
-	}
-	
-	@Override
-	public List<Cart> getMyCart(String email) {
+    // ✅ Update Cart
+    @Override
+    public Cart updateCart(String email, Integer productId, int quantity) {
 
-		User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
+        User user = getUserByEmail(email);
+        Product product = getProductById(productId);
 
-		return cartRepository.findByUserId(user.getId());
-	}
+        Cart cart = cartRepository.findByUserAndProduct(user, product);
 
-	@Override
-	public Cart updateCart(String email, Integer productId, int quantity) {
+        if (cart == null) {
+            throw new CartException("Cart item not found");
+        }
 
-	    User user = userRepository.findByEmail(email)
-	            .orElseThrow(() -> new RuntimeException("User not found"));
+        validateStock(product, quantity);
 
-	    Cart cart = cartRepository.findByUserIdAndProductId(user.getId(), productId);
+        cart.setQuantity(quantity);
+        cart.setPrice(product.getPrice());
+        cart.setTotalPrice(quantity * product.getPrice());
 
-	    if (cart == null) {
-	        throw new RuntimeException("Cart item not found");
-	    }
+        return cartRepository.save(cart);
+    }
 
-	    Product product = productRepository.findById(productId)
-	            .orElseThrow(() -> new RuntimeException("Product not found"));
+    // ✅ Remove from Cart
+    @Override
+    public boolean removeFromCart(String email, Integer productId) {
 
-	    if (product.getStockQuantity() < quantity) {
-	        throw new RuntimeException("Insufficient stock. Available: " + product.getStockQuantity());
-	    }
+        User user = getUserByEmail(email);
+        Product product = getProductById(productId);
 
-	    cart.setQuantity(quantity);
-	    cart.setPrice(product.getPrice());
-	    cart.setTotalPrice(quantity * product.getPrice()); 
+        Cart cart = cartRepository.findByUserAndProduct(user, product);
 
-	    return cartRepository.save(cart);
-	}
-	@Override
-	public boolean removeFromCart(String email, Integer productId) {
+        if (cart == null) {
+            return false;
+        }
 
-		User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
+        cartRepository.delete(cart);
+        return true;
+    }
 
-		Cart cart = cartRepository.findByUserIdAndProductId(user.getId(), productId);
+    // ================= HELPER METHODS =================
 
-		if (cart == null) {
-			return false;
-		}
+    private User getUserByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new CartException("User not found"));
+    }
 
-		cartRepository.delete(cart);
-		return true;
-	}
+    private Product getProductById(Integer productId) {
+        return productRepository.findById(productId)
+                .orElseThrow(() -> new CartException("Product not found with id: " + productId));
+    }
+
+    private void validateStock(Product product, int quantity) {
+        if (product.getStockQuantity() < quantity) {
+            throw new CartException("Insufficient stock. Available: " + product.getStockQuantity());
+        }
+    }
 }

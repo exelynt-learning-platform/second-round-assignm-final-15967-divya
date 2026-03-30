@@ -7,17 +7,15 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 import com.example.demo.Entity.Product;
+import com.example.demo.Entity.User;
 
 import jakarta.transaction.Transactional;
 
 public interface ProductRepository extends JpaRepository<Product, Integer> {
 	
-	boolean existsByName(String name);
-	
-	@Query(
-		    value = "SELECT * FROM product WHERE addedbyuserid = ?1 AND isdeleted = 0",nativeQuery = true
-		)
-	Page<Product> findAllProductsByOwnerid(Integer userid, Pageable pageable);
+	boolean existsByNameAndUser(String name, User user);	
+
+	Page<Product> findByUser(User userid, Pageable pageable);
 	
 	@Modifying
 	@Transactional

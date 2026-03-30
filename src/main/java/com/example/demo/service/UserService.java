@@ -8,48 +8,43 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.example.demo.Entity.User;
+import com.example.demo.enums.Role;
 import com.example.demo.repository.UserRepository;
 
 @Service
 public class UserService {
 
-    @Autowired
-    private UserRepository userRepository;
+	@Autowired
+	private UserRepository userRepository;
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+	@Autowired
+	private PasswordEncoder passwordEncoder;
 
-    // ✅ Register
-    public User register(User user) {
+	public User register(User user) {
 
-        Optional<User> existing = userRepository.findByEmail(user.getEmail());
+		Optional<User> existing = userRepository.findByEmail(user.getEmail());
 
-        if (existing.isPresent()) {
-            throw new RuntimeException("Email already exists");
-        }
+		if (existing.isPresent()) {
+			throw new RuntimeException("Email already exists");
+		}
 
-        // 🔐 Encrypt password
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
+		user.setPassword(passwordEncoder.encode(user.getPassword()));
 
-        // ✅ Default Role
-        if (user.getRole() == null || user.getRole().isBlank()) {
-            user.setRole("ROLE_USER");
-        }
+		if (user.getRole() == null || user.getRole().isBlank()) {
+			user.setRole(Role.ROLE_USER.name());
+		}
 
-        return userRepository.save(user);
-    }
+		return userRepository.save(user);
+	}
 
-    // ✅ Login
-    public User login(String email, String password) {
+	public User login(String email, String password) {
 
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+		User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
 
-        // 🔐 Password match
-        if (!passwordEncoder.matches(password, user.getPassword())) {
-            throw new BadCredentialsException("Invalid password");
-        }
+		if (!passwordEncoder.matches(password, user.getPassword())) {
+			throw new BadCredentialsException("Invalid password");
+		}
 
-        return user;
-    }
+		return user;
+	}
 }

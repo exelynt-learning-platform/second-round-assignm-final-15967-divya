@@ -1,12 +1,17 @@
 package com.example.demo.repository;
+
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.example.demo.Entity.Cart;
-public interface CartRepository  extends JpaRepository<Cart, Integer> {
+import com.example.demo.Entity.Product;
+import com.example.demo.Entity.User;
 
-    List<Cart> findByUserId(Integer userId);
+public interface CartRepository extends JpaRepository<Cart, Integer> {
 
-    Cart findByUserIdAndProductId(Integer userId, Integer productId);
+	Cart findByUserAndProduct(User user, Product product);
+
+	List<Cart> findByUser(User user);
+
 }

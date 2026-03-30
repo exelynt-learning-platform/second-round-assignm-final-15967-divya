@@ -28,29 +28,33 @@ public class ProductServiceImpl implements ProductService {
 
 	@CacheEvict(value = "productsCache", allEntries = true)
 	public Product create(Product product, String email) {
+		User user2 = userRepository.findByEmail(email).get();
 
-		if (productRepository.existsByName(product.getName())) {
-		    throw new RuntimeException("Product already exists");
+		if(user2==null)
+		{
+		    throw new RuntimeException("User Not Found");
+
+		}
+		if (productRepository.existsByNameAndUser(product.getName(), user2)) {
+		    throw new RuntimeException("Product already exists for this user");
 		}
 
 		User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
 
-		product.setAddedbyuserid(user.getId());
-
+		product.setUser(user);
 		return productRepository.save(product);
 	}
 
 	@Cacheable(value = "productsCache", key = "#email + '-' + #page + '-' + #size")
 	public Page<Product> getProductsByOwner(String email, int page, int size) {
 
-		System.out.println("🔥 DB HIT - Method Executed");
 		Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
 
 		User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
 		if (user == null) {
 		    throw new ProductException("User not found");
 		}
-		Page<Product> products = productRepository.findAllProductsByOwnerid(user.getId(), pageable);
+		Page<Product> products = productRepository.findByUser(user, pageable);
 
 		if (products.isEmpty()) {
 			throw new RuntimeException("No products found for this user");
@@ -71,7 +75,9 @@ public class ProductServiceImpl implements ProductService {
 
 		Product existingProduct = productRepository.findById(id)
 				.orElseThrow(() -> new ProductException("Product not found with id: " + id));
-
+		if (existingProduct == null) {  // defensive check (optional but clean)
+		    throw new RuntimeException("Product is null");
+		}
 		if (existingProduct.getIsdeleted() == 1) {
 			throw new ProductException("Cannot update deleted product");
 		}
