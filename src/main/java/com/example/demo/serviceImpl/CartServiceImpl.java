@@ -8,133 +8,125 @@ import org.springframework.stereotype.Service;
 import com.example.demo.Entity.Cart;
 import com.example.demo.Entity.Product;
 import com.example.demo.Entity.User;
+import com.example.demo.constants.AppConstants;
 import com.example.demo.exception.CartException;
 import com.example.demo.repository.CartRepository;
 import com.example.demo.repository.ProductRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.service.CartService;
+import com.example.demo.service.ProductValidationService;
 
 @Service
 public class CartServiceImpl implements CartService {
 
-    @Autowired
-    private CartRepository cartRepository;
+	@Autowired
+	private CartRepository cartRepository;
 
-    @Autowired
-    private UserRepository userRepository;
+	@Autowired
+	private UserRepository userRepository;
 
-    @Autowired
-    private ProductRepository productRepository;
+	@Autowired
+	private ProductRepository productRepository;
+	
+	@Autowired
+	private ProductValidationService productValidationService;
 
-    private static final String USER_NOT_FOUND = "User not found";
-    private static final String PRODUCT_NOT_FOUND = "Product not found with id: ";
-    private static final String CART_NOT_FOUND = "Cart item not found";
-    private static final String INSUFFICIENT_STOCK = "Insufficient stock. Available: ";
+	@Override
+	public Cart addToCart(String email, Integer productId, int quantity) {
 
-    @Override
-    public Cart addToCart(String email, Integer productId, int quantity) {
+		User user = getUserByEmail(email);
+		Product product = getProductById(productId);
 
-        User user = getUserByEmail(email);
-        Product product = getProductById(productId);
+		Cart existingCart = cartRepository.findByUserAndProduct(user, product);
 
-        Cart existingCart = cartRepository.findByUserAndProduct(user, product);
+		if (existingCart != null) {
+			return updateExistingCart(existingCart, product, quantity);
+		}
 
-        if (existingCart != null) {
-            return updateExistingCart(existingCart, product, quantity);
-        }
+		return createNewCart(user, product, quantity);
+	}
 
-        return createNewCart(user, product, quantity);
-    }
+	@Override
+	public List<Cart> getMyCart(String email) {
+		User user = getUserByEmail(email);
+		return cartRepository.findByUserId(user.getId());
+	}
 
-    @Override
-    public List<Cart> getMyCart(String email) {
-        User user = getUserByEmail(email);
-        return cartRepository.findByUser(user);
-    }
+	@Override
+	public Cart updateCart(String email, Integer productId, int quantity) {
 
-    @Override
-    public Cart updateCart(String email, Integer productId, int quantity) {
+		User user = getUserByEmail(email);
+		Product product = getProductById(productId);
 
-        User user = getUserByEmail(email);
-        Product product = getProductById(productId);
+		productValidationService.validateStock(product, quantity);
+		Cart cart = cartRepository.findByUserAndProduct(user, product);
 
-        validateStock(product, quantity);
+		if (cart == null) {
+			throw new CartException(AppConstants.CART_NOT_FOUND);
+		}
 
-        Cart cart = cartRepository.findByUserAndProduct(user, product);
+		cart.setQuantity(quantity);
+		cart.setPrice(product.getPrice());
+		cart.setTotalPrice(calculateTotalPrice(product, quantity));
 
-        if (cart == null) {
-            throw new CartException(CART_NOT_FOUND);
-        }
+		return cartRepository.save(cart);
+	}
 
-        cart.setQuantity(quantity);
-        cart.setPrice(product.getPrice());
-        cart.setTotalPrice(calculateTotalPrice(product, quantity));
+	@Override
+	public boolean removeFromCart(String email, Integer productId) {
 
-        return cartRepository.save(cart);
-    }
+		User user = getUserByEmail(email);
+		Product product = getProductById(productId);
 
-    @Override
-    public boolean removeFromCart(String email, Integer productId) {
+		Cart cart = cartRepository.findByUserAndProduct(user, product);
 
-        User user = getUserByEmail(email);
-        Product product = getProductById(productId);
+		if (cart == null) {
+			return false;
+		}
 
-        Cart cart = cartRepository.findByUserAndProduct(user, product);
+		cartRepository.delete(cart);
+		return true;
+	}
 
-        if (cart == null) {
-            return false;
-        }
+	// ================= PRIVATE METHODS =================
 
-        cartRepository.delete(cart);
-        return true;
-    }
+	private Cart updateExistingCart(Cart existingCart, Product product, int quantity) {
 
-    // ================= PRIVATE METHODS =================
+		int newQuantity = existingCart.getQuantity() + quantity;
 
-    private Cart updateExistingCart(Cart existingCart, Product product, int quantity) {
+		productValidationService.validateStock(product, quantity);
+		existingCart.setQuantity(newQuantity);
+		existingCart.setTotalPrice(calculateTotalPrice(product, newQuantity));
 
-        int newQuantity = existingCart.getQuantity() + quantity;
+		return cartRepository.save(existingCart);
+	}
 
-        validateStock(product, newQuantity);
+	private Cart createNewCart(User user, Product product, int quantity) {
 
-        existingCart.setQuantity(newQuantity);
-        existingCart.setTotalPrice(calculateTotalPrice(product, newQuantity));
+		productValidationService.validateStock(product, quantity);
+		Cart cart = new Cart();
+		cart.setUser(user);
+		cart.setProduct(product);
+		cart.setQuantity(quantity);
+		cart.setPrice(product.getPrice());
+		cart.setProductName(product.getName());
+		cart.setTotalPrice(calculateTotalPrice(product, quantity));
 
-        return cartRepository.save(existingCart);
-    }
+		return cartRepository.save(cart);
+	}
 
-    private Cart createNewCart(User user, Product product, int quantity) {
+	private double calculateTotalPrice(Product product, int quantity) {
+		return quantity * product.getPrice();
+	}
 
-        validateStock(product, quantity);
+	private User getUserByEmail(String email) {
+		return userRepository.findByEmail(email).orElseThrow(() -> new CartException(AppConstants.USER_NOT_FOUND));
+	}
 
-        Cart cart = new Cart();
-        cart.setUser(user);
-        cart.setProduct(product);
-        cart.setQuantity(quantity);
-        cart.setPrice(product.getPrice());
-        cart.setProductName(product.getName());
-        cart.setTotalPrice(calculateTotalPrice(product, quantity));
+	private Product getProductById(Integer productId) {
+		return productRepository.findById(productId)
+				.orElseThrow(() -> new CartException(AppConstants.PRODUCT_NOT_FOUND + productId));
+	}
 
-        return cartRepository.save(cart);
-    }
 
-    private double calculateTotalPrice(Product product, int quantity) {
-        return quantity * product.getPrice();
-    }
-
-    private User getUserByEmail(String email) {
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new CartException(USER_NOT_FOUND));
-    }
-
-    private Product getProductById(Integer productId) {
-        return productRepository.findById(productId)
-                .orElseThrow(() -> new CartException(PRODUCT_NOT_FOUND + productId));
-    }
-
-    private void validateStock(Product product, int quantity) {
-        if (product.getStockQuantity() < quantity) {
-            throw new CartException(INSUFFICIENT_STOCK + product.getStockQuantity());
-        }
-    }
 }

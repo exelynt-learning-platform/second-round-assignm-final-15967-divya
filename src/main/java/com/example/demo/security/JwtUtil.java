@@ -1,12 +1,17 @@
 package com.example.demo.security;
 
-import io.jsonwebtoken.*;
-import io.jsonwebtoken.security.Keys;
+import java.nio.charset.StandardCharsets;
+import java.util.Date;
+
+import javax.crypto.SecretKey;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import javax.crypto.SecretKey;
-import java.util.Date;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 
 @Component
 public class JwtUtil {
@@ -14,8 +19,15 @@ public class JwtUtil {
     @Value("${jwt.secret}")
     private String SECRET;
 
-    private SecretKey getKey() {
-        return Keys.hmacShaKeyFor(SECRET.getBytes());
+    private SecretKey key;
+
+ @PostConstruct
+    public void init() {
+        if (SECRET == null || SECRET.length() < 32) {
+            throw new IllegalStateException("JWT secret must be at least 32 characters (256 bits)");
+        }
+
+        this.key = Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8));
     }
 
     // ✅ Generate Token
@@ -24,8 +36,8 @@ public class JwtUtil {
                 .setSubject(email)
                 .claim("role", role)
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60)) // 1 hr
-                .signWith(getKey())
+                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60))
+                .signWith(key)
                 .compact();
     }
 
@@ -51,7 +63,7 @@ public class JwtUtil {
 
     private Claims getClaims(String token) {
         return Jwts.parserBuilder()
-                .setSigningKey(getKey())
+                .setSigningKey(key)
                 .build()
                 .parseClaimsJws(token)
                 .getBody();

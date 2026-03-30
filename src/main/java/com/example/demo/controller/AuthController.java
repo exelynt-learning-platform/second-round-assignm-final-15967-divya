@@ -2,12 +2,16 @@ package com.example.demo.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import com.example.demo.DTO.LoginRequest;
 import com.example.demo.DTO.LoginResponse;
 import com.example.demo.DTO.RegisterRequest;
 import com.example.demo.Entity.User;
+import com.example.demo.Mappers.UserMapper;
 import com.example.demo.security.JwtUtil;
 import com.example.demo.service.UserService;
 
@@ -23,14 +27,13 @@ public class AuthController {
 	@Autowired
 	private JwtUtil jwtUtil;
 
+	@Autowired
+	private UserMapper userMapper;
+
 	@PostMapping("/register")
 	public ResponseEntity<String> register(@Valid @RequestBody RegisterRequest request) {
 
-		User user = new User();
-		user.setName(request.getName());
-		user.setEmail(request.getEmail());
-		user.setPassword(request.getPassword());
-		user.setRole(request.getRole());
+		User user = userMapper.toUser(request);
 
 		userService.register(user);
 

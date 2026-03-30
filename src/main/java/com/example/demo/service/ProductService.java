@@ -1,6 +1,7 @@
 package com.example.demo.service;
 
 import org.springframework.data.domain.Page;
+
 import com.example.demo.Entity.Product;
 
 public interface ProductService {

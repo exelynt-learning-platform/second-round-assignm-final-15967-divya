@@ -1,7 +1,6 @@
 package com.example.demo.Entity;
 
 import java.util.Date;
-import java.util.List;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -13,7 +12,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.AllArgsConstructor;
-import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -38,7 +36,6 @@ public class Product {
 	private int stockQuantity;
 	@NotBlank(message = "Image URL is required")
 	private String imageUrl;
-	private Date addeddate;
 	@ManyToOne
 	@JoinColumn(name = "user_id")
 	private User user;

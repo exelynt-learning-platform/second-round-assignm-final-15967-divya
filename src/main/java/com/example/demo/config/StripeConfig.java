@@ -1,20 +1,18 @@
 package com.example.demo.config;
 
-
-import com.stripe.Stripe;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
-import jakarta.annotation.PostConstruct;
 
 @Configuration
 public class StripeConfig {
 
-    @Value("${stripe.secret.key}")
-    private String secretKey;
+    @Bean
+    public void stripeInitializer(@Value("${stripe.secret.key}") String secretKey) {
+        if (secretKey == null || secretKey.isBlank()) {
+            throw new IllegalStateException("Stripe secret key is missing");
+        }
 
-    @PostConstruct
-    public void init() {
-        Stripe.apiKey = secretKey;
+        com.stripe.Stripe.apiKey = secretKey;
     }
 }

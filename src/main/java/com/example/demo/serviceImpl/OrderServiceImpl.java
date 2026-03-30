@@ -19,6 +19,7 @@ import com.example.demo.repository.OrderRepository;
 import com.example.demo.repository.ProductRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.service.OrderService;
+import com.example.demo.service.ProductValidationService;
 
 import jakarta.transaction.Transactional;
 
@@ -39,6 +40,9 @@ public class OrderServiceImpl implements OrderService {
 
     @Autowired
     private ProductRepository productRepository;
+    
+    @Autowired
+    private ProductValidationService productValidationService;
 
     @Transactional
     @Override
@@ -46,13 +50,16 @@ public class OrderServiceImpl implements OrderService {
 
         validateShippingAddress(shippingAddress);
 
-        User user = getUserByEmail(email); 
+        User user = getUserByEmail(email);
 
-        List<Cart> cartItems = cartRepository.findByUser(user);
+        List<Cart> cartItems = cartRepository.findByUserId(user.getId());
 
         if (cartItems == null || cartItems.isEmpty()) {
             throw new OrderException(AppConstants.CART_EMPTY);
         }
+
+        // ✅ SECURITY CHECK: validate ownership
+        validateCartOwnership(cartItems, user);
 
         Order order = createOrder(user, shippingAddress);
         Order savedOrder = orderRepository.save(order);
@@ -65,6 +72,13 @@ public class OrderServiceImpl implements OrderService {
         cartRepository.deleteAll(cartItems);
 
         return savedOrder;
+    }
+    private void validateCartOwnership(List<Cart> cartItems, User user) {
+        for (Cart cart : cartItems) {
+            if (cart.getUser() == null || !cart.getUser().getId().equals(user.getId())) {
+                throw new OrderException(AppConstants.Unauthorized_PRODUCT_ACCCESS);
+            }
+        }
     }
 
     @Override
@@ -88,8 +102,7 @@ public class OrderServiceImpl implements OrderService {
 
             Product product = getProductById(cart.getProduct().getId());
 
-            validateStock(product, cart.getQuantity());
-
+            productValidationService.validateStock(product, cart.getQuantity());
             totalPrice += cart.getTotalPrice();
 
             reduceStock(product, cart.getQuantity());
@@ -117,11 +130,7 @@ public class OrderServiceImpl implements OrderService {
                         new OrderException(AppConstants.PRODUCT_NOT_FOUND + productId));
     }
 
-    private void validateStock(Product product, int quantity) {
-        if (product.getStockQuantity() < quantity) {
-            throw new OrderException(AppConstants.INSUFFICIENT_STOCK + product.getName());
-        }
-    }
+
 
     private void reduceStock(Product product, int quantity) {
         product.setStockQuantity(product.getStockQuantity() - quantity);
@@ -146,7 +155,7 @@ public class OrderServiceImpl implements OrderService {
         order.setUser(user);
         order.setShippingAddress(shippingAddress);
         order.setPaymentStatus(AppConstants.PAYMENT_PENDING);
-        order.setStatus(AppConstants.ORDER_CREATED);
+//        order.setStatus(AppConstants.ORDER_CREATED);
         order.setCreatedDate(new Date());
 
         return order;

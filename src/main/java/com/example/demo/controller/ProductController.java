@@ -6,7 +6,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import com.example.demo.Entity.Order;
 import com.example.demo.Entity.Product;
@@ -15,6 +23,7 @@ import com.example.demo.security.SecurityUtil;
 import com.example.demo.service.OrderService;
 import com.example.demo.service.ProductService;
 
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -22,86 +31,88 @@ import lombok.extern.slf4j.Slf4j;
 @RequestMapping("/products")
 public class ProductController {
 
-    @Autowired
-    private ProductService productService;
+	@Autowired
+	private ProductService productService;
 
-    @Autowired
-    private OrderService orderService;
+	@Autowired
+	private OrderService orderService;
 
-    @PostMapping("/saveProduct")
-    public ResponseEntity<Product> create(@RequestBody Product product) {
+	@PostMapping("/saveProduct")
+	public ResponseEntity<Product> create(@Valid @RequestBody Product product) {
 
-        String email = SecurityUtil.getCurrentUserEmail();
-        log.debug("Creating product for user: {}", email);
+		String email = SecurityUtil.getCurrentUserEmail();
 
-        Product savedProduct = productService.create(product, email);
+		log.info("Creating product for user: {}", email); // ✅ standardized
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(savedProduct);
-    }
+		Product savedProduct = productService.create(product, email);
 
-    @GetMapping("/getProductsByOwner")
-    public ResponseEntity<Page<Product>> getProductsByOwner(
-            @RequestParam(name = "page", defaultValue = "0") int page,
-            @RequestParam(name = "size", defaultValue = "10") int size) {
+		return ResponseEntity.status(HttpStatus.CREATED).body(savedProduct);
+	}
 
-        String email = SecurityUtil.getCurrentUserEmail();
+	@GetMapping("/getProductsByOwner")
+	public ResponseEntity<Page<Product>> getProductsByOwner(@RequestParam(name = "page", defaultValue = "0") int page,
+			@RequestParam(name = "size", defaultValue = "10") int size) {
 
-        log.info("Fetching products for user: {}", email);
+		String email = SecurityUtil.getCurrentUserEmail();
 
-        Page<Product> products = productService.getProductsByOwner(email, page, size);
+		log.info("Fetching products for user: {}", email); // ✅ consistent
 
-        if (products == null || products.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-        }
+		Page<Product> products = productService.getProductsByOwner(email, page, size);
 
-        return ResponseEntity.ok(products);
-    }
+		// ✅ removed null check
+		if (products.isEmpty()) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+		}
 
-    @GetMapping("/getProductById/{id}")
-    public ResponseEntity<Product> getById(@PathVariable("id") Integer id) {
+		return ResponseEntity.ok(products);
+	}
 
-        log.debug("Fetching product by id: {}", id);
+	@GetMapping("/getProductById/{id}")
+	public ResponseEntity<Product> getById(@PathVariable("id") Integer id) {
 
-        Product product = productService.getById(id);
+		log.debug("Fetching product by id: {}", id); // ✅ debug for internal
 
-        return ResponseEntity.ok(product);
-    }
+		Product product = productService.getById(id);
 
-    @PutMapping("/{id}")
-    public ResponseEntity<Product> update(@PathVariable("id") Integer id,
-                                          @RequestBody Product product) {
+		return ResponseEntity.ok(product);
+	}
 
-        log.debug("Updating product id: {}", id);
+	@PutMapping("/{id}")
+	public ResponseEntity<Product> update(@PathVariable("id") Integer id, @RequestBody Product product) {
 
-        Product updated = productService.update(id, product);
+		log.info("Updating product id: {}", id); // ✅ important action
 
-        return ResponseEntity.ok(updated);
-    }
+		Product updated = productService.update(id, product);
 
-    @DeleteMapping("/deleteProductById/{id}")
-    public ResponseEntity<String> delete(@PathVariable("id") Integer id) {
+		return ResponseEntity.ok(updated);
+	}
 
-        log.debug("Deleting product id: {}", id);
+	@DeleteMapping("/deleteProductById/{id}")
+	public ResponseEntity<String> delete(@PathVariable("id") Integer id) {
 
-        boolean deleted = productService.delete(id);
+		log.info("Deleting product id: {}", id); // ✅ important action
 
-        if (deleted) {
-            return ResponseEntity.ok(AppConstants.PRODUCT_DELETED);
-        }
+		boolean deleted = productService.delete(id);
 
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(AppConstants.PRODUCT_NOT_FOUND);
-    }
+		if (deleted) {
+			return ResponseEntity.ok(AppConstants.PRODUCT_DELETED);
+		}
 
-    @GetMapping("/getAllOrders")
-    public ResponseEntity<List<Order>> allOrders() {
+		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(AppConstants.PRODUCT_NOT_FOUND);
+	}
 
-        List<Order> orders = orderService.getAllOrders();
+	@GetMapping("/getAllOrders")
+	public ResponseEntity<List<Order>> allOrders() {
 
-        if (orders == null || orders.isEmpty()) {
-            return ResponseEntity.noContent().build();
-        }
+		log.info("Fetching all orders"); // ✅ added logging
 
-        return ResponseEntity.ok(orders);
-    }
+		List<Order> orders = orderService.getAllOrders();
+
+		// Optional: null check not needed if service guarantees non-null
+		if (orders.isEmpty()) {
+			return ResponseEntity.noContent().build();
+		}
+
+		return ResponseEntity.ok(orders);
+	}
 }
