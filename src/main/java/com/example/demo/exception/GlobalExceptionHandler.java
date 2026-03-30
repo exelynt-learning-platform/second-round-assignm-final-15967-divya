@@ -36,4 +36,20 @@ public class GlobalExceptionHandler {
 
 	    return ResponseEntity.badRequest().body(error);
 	}
+    @ExceptionHandler(PaymentException.class)
+    public ResponseEntity<String> handlePaymentException(PaymentException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<String> handleGeneralException(Exception ex) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Something went wrong: " + ex.getMessage());
+    }
+    @ExceptionHandler(jakarta.validation.ConstraintViolationException.class)
+    public ResponseEntity<String> handleValidation(Exception ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body("Validation error: " + ex.getMessage());
+    }
+  
 }

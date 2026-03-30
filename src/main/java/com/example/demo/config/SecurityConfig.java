@@ -39,6 +39,8 @@ public class SecurityConfig {
                 .requestMatchers("/cart/**").hasRole(ROLE_USER)
                 .requestMatchers("/orders/place").hasRole(ROLE_USER)
                 .requestMatchers("/orders/my").hasRole(ROLE_USER)
+                .requestMatchers("/payment/**").hasRole(ROLE_USER)
+
 
                 // ADMIN
                 .requestMatchers("/products/**").hasRole(ROLE_ADMIN)
