@@ -37,78 +37,67 @@ public class ProductController {
 	@Autowired
 	private OrderService orderService;
 
-	@PostMapping("/saveProduct")
+	// ✅ CREATE
+	@PostMapping
 	public ResponseEntity<Product> create(@Valid @RequestBody Product product) {
-
 		String email = SecurityUtil.getCurrentUserEmail();
-
-		log.info("Creating product for user: {}", email); // ✅ standardized
+		log.info("Creating product for user: {}", email);
 
 		Product savedProduct = productService.create(product, email);
-
 		return ResponseEntity.status(HttpStatus.CREATED).body(savedProduct);
 	}
 
-	@GetMapping("/getProductsByOwner")
-	public ResponseEntity<Page<Product>> getProductsByOwner(@RequestParam(name = "page", defaultValue = "0") int page,
-			@RequestParam(name = "size", defaultValue = "10") int size) {
+	// ✅ GET PRODUCTS BY OWNER (no custom path)
+	@GetMapping
+	public ResponseEntity<Page<Product>> getProductsByOwner(@RequestParam(defaultValue = "0") int page,
+			@RequestParam(defaultValue = "10") int size) {
 
 		String email = SecurityUtil.getCurrentUserEmail();
-
-		log.info("Fetching products for user: {}", email); // ✅ consistent
+		log.info("Fetching products for user: {}", email);
 
 		Page<Product> products = productService.getProductsByOwner(email, page, size);
 
-		// ✅ removed null check
-		if (products.isEmpty()) {
-			return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-		}
-
-		return ResponseEntity.ok(products);
+		return ResponseEntity.ok(products); // ✅ removed redundant 404
 	}
 
-	@GetMapping("/getProductById/{id}")
+	// ✅ GET BY ID
+	@GetMapping("/{id}")
 	public ResponseEntity<Product> getById(@PathVariable("id") Integer id) {
-
-		log.debug("Fetching product by id: {}", id); // ✅ debug for internal
+		log.debug("Fetching product by id: {}", id);
 
 		Product product = productService.getById(id);
-
 		return ResponseEntity.ok(product);
 	}
 
+	// ✅ UPDATE
 	@PutMapping("/{id}")
 	public ResponseEntity<Product> update(@PathVariable("id") Integer id, @RequestBody Product product) {
 
-		log.info("Updating product id: {}", id); // ✅ important action
+		log.info("Updating product id: {}", id);
 
 		Product updated = productService.update(id, product);
-
 		return ResponseEntity.ok(updated);
 	}
 
-	@DeleteMapping("/deleteById/{id}")
+	// ✅ DELETE
+	@DeleteMapping("/{id}")
 	public ResponseEntity<String> delete(@PathVariable("id") Integer id) {
 
-		log.info("Deleting product id: {}", id); // ✅ important action
+		log.info("Deleting product id: {}", id);
 
-		boolean deleted = productService.delete(id);
+		productService.delete(id);
 
-		if (deleted) {
-			return ResponseEntity.ok(AppConstants.PRODUCT_DELETED);
-		}
-
-		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(AppConstants.PRODUCT_NOT_FOUND);
+		return ResponseEntity.ok(AppConstants.PRODUCT_DELETED);
 	}
 
-	@GetMapping("/getAllOrders")
+	// ✅ ORDERS (separate resource ideally, but keeping here)
+	@GetMapping("/orders")
 	public ResponseEntity<List<Order>> allOrders() {
 
-		log.info("Fetching all orders"); // ✅ added logging
+		log.info("Fetching all orders");
 
 		List<Order> orders = orderService.getAllOrders();
 
-		// Optional: null check not needed if service guarantees non-null
 		if (orders.isEmpty()) {
 			return ResponseEntity.noContent().build();
 		}

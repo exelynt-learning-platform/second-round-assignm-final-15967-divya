@@ -1,15 +1,11 @@
 package com.example.demo.Entity;
 
-import java.util.Date;
-import java.util.List;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import lombok.AllArgsConstructor;
-import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -20,14 +16,14 @@ public class User {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	 Integer id;
+	private Integer id;
 
-	 String name;
+	private String name;
 
 	@Column(unique = true)
-	 String email;
+	private String email;
 
-	 String password;
+	private String password;
 
-	 String role; // ADMIN / USER
+	private String role; // ADMIN / USER
 }

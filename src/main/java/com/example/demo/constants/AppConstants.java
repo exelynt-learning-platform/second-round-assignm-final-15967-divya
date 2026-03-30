@@ -15,5 +15,6 @@ public final class AppConstants {
 	public static final String CART_NOT_FOUND = "Cart item not found";
 	public static final String MAX_CART_QUANTITY_EXCEEDED = 
 	        "Maximum allowed quantity per product is ";
+	public static final String PRODUCT_ALREADY_EXISTS = "Product already exists for this user";
 
 }

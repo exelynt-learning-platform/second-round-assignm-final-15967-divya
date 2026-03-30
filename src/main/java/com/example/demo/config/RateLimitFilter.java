@@ -1,15 +1,10 @@
 package com.example.demo.config;
-
 import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.stereotype.Component;
 
-import jakarta.servlet.Filter;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.ServletRequest;
-import jakarta.servlet.ServletResponse;
+import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -17,7 +12,7 @@ import jakarta.servlet.http.HttpServletResponse;
 public class RateLimitFilter implements Filter {
 
     private final ConcurrentHashMap<String, Integer> attempts = new ConcurrentHashMap<>();
-    private final int MAX_ATTEMPTS = 10;
+    private static final int MAX_ATTEMPTS = 10;
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
@@ -28,20 +23,24 @@ public class RateLimitFilter implements Filter {
 
         String path = req.getRequestURI();
 
-        // 🔥 Only for login API
-        if (path.equals("/auth/login")) {
+        // ✅ Only login API rate limit
+        if ("/auth/login".equals(path)) {
 
             String ip = req.getRemoteAddr();
+            String userAgent = req.getHeader("User-Agent");
 
-            attempts.putIfAbsent(ip, 0);
+            // ✅ Improved key (IP + User-Agent)
+            String key = ip + "_" + userAgent;
 
-            if (attempts.get(ip) >= MAX_ATTEMPTS) {
+            attempts.putIfAbsent(key, 0);
+
+            if (attempts.get(key) >= MAX_ATTEMPTS) {
                 res.setStatus(429);
                 res.getWriter().write("Too many login attempts. Try later.");
                 return;
             }
 
-            attempts.put(ip, attempts.get(ip) + 1);
+            attempts.put(key, attempts.get(key) + 1);
         }
 
         chain.doFilter(request, response);

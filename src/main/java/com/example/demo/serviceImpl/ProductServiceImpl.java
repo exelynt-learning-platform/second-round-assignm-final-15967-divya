@@ -1,5 +1,4 @@
 package com.example.demo.serviceImpl;
-import java.util.Optional;  
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -11,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import com.example.demo.Entity.Product;
 import com.example.demo.Entity.User;
+import com.example.demo.constants.AppConstants;
 import com.example.demo.exception.OrderException;
 import com.example.demo.exception.ProductException;
 import com.example.demo.repository.ProductRepository;
@@ -28,30 +28,35 @@ public class ProductServiceImpl implements ProductService {
 	@Autowired
 	UserRepository userRepository;
 
+	@Override
 	@CacheEvict(value = "productsCache", allEntries = true)
 	public Product create(Product product, String email) {
-		User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
 
+	    User user = userRepository.findByEmail(email)
+	            .orElseThrow(() -> new RuntimeException(AppConstants.USER_NOT_FOUND));
+
+	    // ✅ HERE is the correct place
 	    if (productRepository.existsByNameAndUser(product.getName(), user)) {
-	        throw new ProductException("Product already exists for this user");
+	        throw new ProductException(AppConstants.PRODUCT_ALREADY_EXISTS);
 	    }
 
-		product.setUser(user);
-		return productRepository.save(product);
-	}
+	    product.setUser(user);
 
-	@Cacheable(value = "productsCache", key = "#email + '-' + #page + '-' + #size")
+	    return productRepository.save(product);
+	}
+	@Override
+	@Cacheable(value = "productsCache", key = "{#email, #page, #size}")
 	public Page<Product> getProductsByOwner(String email, int page, int size) {
 
 	    Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
 
 	    User user = userRepository.findByEmail(email)
-	            .orElseThrow(() -> new ProductException("User not found"));
+	            .orElseThrow(() -> new ProductException(AppConstants.USER_NOT_FOUND));
 
 	    Page<Product> products = productRepository.findByUser(user, pageable);
 
 	    if (products.isEmpty()) {
-	        throw new ProductException("No products found for this user");
+	        throw new ProductException(AppConstants.NO_PRODUCTS_FOUND);
 	    }
 
 	    return products;
@@ -59,8 +64,9 @@ public class ProductServiceImpl implements ProductService {
 
 	@Override
 	public Product getById(int id) {
-		return productRepository.findById(id)
-				.orElseThrow(() -> new ProductException("Product not found with id: " + id));
+	    return productRepository.findById(id)
+	            .orElseThrow(() -> 
+	                new ProductException(AppConstants.PRODUCT_NOT_FOUND + id));
 	}
 
 	@Override
@@ -87,29 +93,25 @@ public class ProductServiceImpl implements ProductService {
 	public boolean delete(Integer id) {
 
 	    String email = SecurityUtil.getCurrentUserEmail();
-	    Optional<User> currentUser = userRepository.findByEmail(email);
 
-	    Optional<Product> optionalProduct = productRepository.findById(id);
+	    User currentUser = userRepository.findByEmail(email)
+	            .orElseThrow(() -> new RuntimeException(AppConstants.USER_NOT_FOUND));
 
-	    if (optionalProduct.isEmpty()) {
-	        log.warn("Product not found with id: {}", id);
-	        return false;
-	    }
+	    Product product = productRepository.findById(id)
+	            .orElseThrow(() -> 
+	                new ProductException(AppConstants.PRODUCT_NOT_FOUND + id));
 
-	    Product product = optionalProduct.get();
-
-	    if (!product.getUser().getId().equals(currentUser.get().getId())) {
+	    if (!product.getUser().getId().equals(currentUser.getId())) {
 	        log.warn("Unauthorized delete attempt by user: {} for product id: {}", email, id);
-	        throw new RuntimeException("You are not allowed to delete this product");
+	        throw new RuntimeException(AppConstants.UNAUTHORIZED_PRODUCT_ACCESS);
 	    }
 
 	    productRepository.delete(product);
 
-	    log.info("Product soft deleted successfully. Id: {}", id);
+	    log.info("Product deleted successfully. Id: {}", id);
 
 	    return true;
 	}
-
 	
 	public Page<Product> getAllProducts(int page, int size) {
 

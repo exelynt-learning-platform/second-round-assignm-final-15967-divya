@@ -1,5 +1,4 @@
 package com.example.demo.security;
-
 import java.io.IOException;
 import java.util.List;
 
@@ -38,7 +37,6 @@ public class JwtFilter extends OncePerRequestFilter {
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             token = authHeader.substring(7);
 
-            // ✅ Validate token
             if (jwtUtil.validateToken(token)) {
                 email = jwtUtil.extractEmail(token);
                 role = jwtUtil.extractRole(token);
@@ -50,7 +48,7 @@ public class JwtFilter extends OncePerRequestFilter {
                 SecurityContextHolder.getContext().getAuthentication() == null) {
 
             SimpleGrantedAuthority authority =
-                    new SimpleGrantedAuthority(role);
+                    new SimpleGrantedAuthority(role); // ROLE_USER
 
             UsernamePasswordAuthenticationToken authToken =
                     new UsernamePasswordAuthenticationToken(
