@@ -8,6 +8,8 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -17,8 +19,12 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@SQLDelete(sql = "UPDATE Product SET is_deleted = true WHERE id = ?")
-@Getter@Setter@NoArgsConstructor@AllArgsConstructor
+@Table(name = "products", uniqueConstraints = { @UniqueConstraint(columnNames = { "name", "user_id" }) })
+@SQLDelete(sql = "UPDATE products SET is_deleted = true WHERE id = ?")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class Product {
 
 	@Id
@@ -40,5 +46,5 @@ public class Product {
 	@ManyToOne
 	@JoinColumn(name = "user_id")
 	private User user;
-    private boolean isDeleted = false;
+	private boolean isDeleted = false;
 }

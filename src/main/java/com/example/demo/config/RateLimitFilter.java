@@ -1,7 +1,10 @@
 package com.example.demo.config;
-import java.io.IOException;
-import java.util.concurrent.ConcurrentHashMap;
 
+import java.io.IOException;
+import java.time.Duration;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import jakarta.servlet.*;
@@ -11,8 +14,11 @@ import jakarta.servlet.http.HttpServletResponse;
 @Component
 public class RateLimitFilter implements Filter {
 
-    private final ConcurrentHashMap<String, Integer> attempts = new ConcurrentHashMap<>();
+    @Autowired
+    private StringRedisTemplate redisTemplate;
+
     private static final int MAX_ATTEMPTS = 10;
+    private static final long TIME_WINDOW = 15 * 60; // 15 minutes
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
@@ -23,24 +29,22 @@ public class RateLimitFilter implements Filter {
 
         String path = req.getRequestURI();
 
-        // ✅ Only login API rate limit
         if ("/auth/login".equals(path)) {
 
-            String ip = req.getRemoteAddr();
-            String userAgent = req.getHeader("User-Agent");
+            String key = req.getRemoteAddr();
+            String redisKey = "rate_limit:" + key;
 
-            // ✅ Improved key (IP + User-Agent)
-            String key = ip + "_" + userAgent;
+            Long attempts = redisTemplate.opsForValue().increment(redisKey);
 
-            attempts.putIfAbsent(key, 0);
+            if (attempts != null && attempts == 1) {
+                redisTemplate.expire(redisKey, Duration.ofSeconds(TIME_WINDOW));
+            }
 
-            if (attempts.get(key) >= MAX_ATTEMPTS) {
+            if (attempts != null && attempts > MAX_ATTEMPTS) {
                 res.setStatus(429);
                 res.getWriter().write("Too many login attempts. Try later.");
                 return;
             }
-
-            attempts.put(key, attempts.get(key) + 1);
         }
 
         chain.doFilter(request, response);

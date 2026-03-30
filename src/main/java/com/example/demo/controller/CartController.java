@@ -1,8 +1,12 @@
 package com.example.demo.controller;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -12,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.demo.Entity.Cart;
+import com.example.demo.constants.AppConstants;
 import com.example.demo.security.SecurityUtil;
 import com.example.demo.service.CartService;
 
@@ -19,30 +24,36 @@ import com.example.demo.service.CartService;
 @RequestMapping("/cart")
 public class CartController {
 
-    @Autowired
-    private CartService cartService;
+	@Autowired
+	private CartService cartService;
 
-    @PostMapping("/add/{productId}/{quantity}")
-    public Cart addToCart(@PathVariable Integer productId,
-                          @PathVariable int quantity) {
-        return cartService.addToCart(SecurityUtil.getCurrentUserEmail(), productId, quantity);
-    }
+	@PostMapping("/add/{productId}/{quantity}")
+	public Cart addToCart(@PathVariable Integer productId, @PathVariable int quantity) {
+		return cartService.addToCart(SecurityUtil.getCurrentUserEmail(), productId, quantity);
+	}
 
-    @GetMapping("/my")
-    public List<Cart> getMyCart() {
-        return cartService.getMyCart(SecurityUtil.getCurrentUserEmail());
-    }
+	@GetMapping("/my")
+	public List<Cart> getMyCart() {
+		return cartService.getMyCart(SecurityUtil.getCurrentUserEmail());
+	}
 
-    @PutMapping("/update/{productId}/{quantity}")
-    public Cart updateCart(@PathVariable Integer productId,
-                           @PathVariable int quantity) {
-        return cartService.updateCart(SecurityUtil.getCurrentUserEmail(), productId, quantity);
-    }
+	@PutMapping("/{productId}/{quantity}")
+	public Cart updateCart(@PathVariable Integer productId, @PathVariable int quantity) {
+		return cartService.updateCart(SecurityUtil.getCurrentUserEmail(), productId, quantity);
+	}
 
-    @DeleteMapping("/removeProductFromCart/{productId}")
-    public String remove(@PathVariable Integer productId) {
-        return cartService.removeFromCart(SecurityUtil.getCurrentUserEmail(), productId)
-                ? "Removed from cart"
-                : "Failed to remove";
-    }
+	@DeleteMapping("/{productId}")
+	public ResponseEntity<?> remove(@PathVariable Integer productId) {
+
+		boolean isRemoved = cartService.removeFromCart(SecurityUtil.getCurrentUserEmail(), productId);
+
+		if (isRemoved) {
+			return ResponseEntity.noContent().build(); // 204 No Content
+		} else {
+			Map<String, String> response = new HashMap<>();
+			response.put("message", AppConstants.PRODUCT_NOT_FOUND_IN_CART);
+
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+		}
+	}
 }

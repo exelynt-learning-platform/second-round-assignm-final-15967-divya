@@ -21,6 +21,8 @@ public class JwtUtil {
 
 	@Value("${jwt.secret}")
 	private String SECRET;
+	@Value("${jwt.expiration}")
+	private long jwtExpiration;
 
 	private SecretKey key;
 
@@ -57,7 +59,7 @@ public class JwtUtil {
 	// ✅ Generate Token
 	public String generateToken(String email, String role) {
 		return Jwts.builder().setSubject(email).claim("role", role) // ROLE_USER
-				.setIssuedAt(new Date()).setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60))
+				.setIssuedAt(new Date()).setExpiration(new Date(System.currentTimeMillis() + jwtExpiration))
 				.signWith(key, SignatureAlgorithm.HS256).compact();
 	}
 
@@ -94,5 +96,4 @@ public class JwtUtil {
 		}
 	}
 
-	
 }

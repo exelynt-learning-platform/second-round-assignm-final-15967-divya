@@ -12,6 +12,7 @@ import com.example.demo.Entity.OrderItem;
 import com.example.demo.Entity.Product;
 import com.example.demo.Entity.User;
 import com.example.demo.constants.AppConstants;
+import com.example.demo.enums.PaymentStatus;
 import com.example.demo.exception.OrderException;
 import com.example.demo.repository.CartRepository;
 import com.example.demo.repository.OrderItemRepository;
@@ -108,24 +109,47 @@ public class OrderServiceImpl implements OrderService {
 	}
 
 	// ================= HELPER METHODS =================
-
 	private double processCartItems(List<Cart> cartItems, Order order) {
 
-		double totalPrice = 0;
+	    double totalPrice = 0;
 
-		for (Cart cart : cartItems) {
+	    for (Cart cart : cartItems) {
 
-			Product product = getProductById(cart.getProduct().getId());
+	        // ✅ Validate user ownership
+	        if (cart.getUser() == null ||
+	            !cart.getUser().getId().equals(order.getUser().getId())) {
 
-			productValidationService.validateStock(product, cart.getQuantity());
-			totalPrice += cart.getTotalPrice();
+	            throw new OrderException(AppConstants.UNAUTHORIZED_PRODUCT_ACCESS);
+	        }
 
-			reduceStock(product, cart.getQuantity());
+	        // ✅ Null check for product in cart
+	        if (cart.getProduct() == null || cart.getProduct().getId() == null) {
+	            throw new OrderException(AppConstants.PRODUCT_NOT_FOUND);
+	        }
 
-			saveOrderItem(order, cart, product);
-		}
+	        // ✅ Fetch latest product from DB
+	        Product product = productRepository.findById(cart.getProduct().getId())
+	                .orElseThrow(() -> new OrderException(AppConstants.PRODUCT_NOT_FOUND));
 
-		return totalPrice;
+	        // ❗ Check if product is deleted
+	        if (product.isDeleted()) {
+	            throw new OrderException("Product is no longer available");
+	        }
+
+	        // ✅ Stock validation
+	        productValidationService.validateStock(product, cart.getQuantity());
+
+	        // ✅ Calculate total
+	        totalPrice += cart.getTotalPrice();
+
+	        // ✅ Reduce stock
+	        reduceStock(product, cart.getQuantity());
+
+	        // ✅ Save order item
+	        saveOrderItem(order, cart, product);
+	    }
+
+	    return totalPrice;
 	}
 
 	private void validateShippingAddress(String address) {
@@ -165,7 +189,7 @@ public class OrderServiceImpl implements OrderService {
 		Order order = new Order();
 		order.setUser(user);
 		order.setShippingAddress(shippingAddress);
-		order.setPaymentStatus(AppConstants.PAYMENT_PENDING);
+		order.setPaymentStatus(PaymentStatus.PENDING);
 //        order.setStatus(AppConstants.ORDER_CREATED);
 		order.setCreatedDate(new Date());
 

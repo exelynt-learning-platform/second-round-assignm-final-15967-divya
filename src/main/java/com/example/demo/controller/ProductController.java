@@ -90,18 +90,5 @@ public class ProductController {
 		return ResponseEntity.ok(AppConstants.PRODUCT_DELETED);
 	}
 
-	// ✅ ORDERS (separate resource ideally, but keeping here)
-	@GetMapping("/orders")
-	public ResponseEntity<List<Order>> allOrders() {
 
-		log.info("Fetching all orders");
-
-		List<Order> orders = orderService.getAllOrders();
-
-		if (orders.isEmpty()) {
-			return ResponseEntity.noContent().build();
-		}
-
-		return ResponseEntity.ok(orders);
-	}
 }

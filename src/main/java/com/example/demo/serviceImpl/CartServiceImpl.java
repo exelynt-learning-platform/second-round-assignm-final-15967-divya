@@ -51,27 +51,39 @@ public class CartServiceImpl implements CartService {
 		User user = getUserByEmail(email);
 		return cartRepository.findByUserId(user.getId());
 	}
-
 	@Override
 	public Cart updateCart(String email, Integer productId, int quantity) {
 
-		User user = getUserByEmail(email);
-		Product product = getProductById(productId);
+	    // ✅ Get user
+	    User user = getUserByEmail(email);
 
-		productValidationService.validateStock(product, quantity);
-		Cart cart = cartRepository.findByUserAndProduct(user, product);
+	    // ✅ Get product
+	    Product product = getProductById(productId);
 
-		if (cart == null) {
-			throw new CartException(AppConstants.CART_NOT_FOUND);
-		}
+	    // ❗ Validate quantity (using constants)
+	    if (quantity <= 0) {
+	        throw new CartException(AppConstants.INVALID_QUANTITY);
+	    }
 
-		cart.setQuantity(quantity);
-		cart.setPrice(product.getPrice());
-		cart.setTotalPrice(calculateTotalPrice(product, quantity));
+	    if (quantity > AppConstants.MAX_CART_QUANTITY) {
+	        throw new CartException(
+	            AppConstants.MAX_QUANTITY_EXCEEDED + AppConstants.MAX_CART_QUANTITY
+	        );
+	    }
 
-		return cartRepository.save(cart);
+	    // ❗ Validate stock
+	    productValidationService.validateStock(product, quantity);
+
+	    // ✅ Fetch existing cart
+	    Cart cart = cartRepository.findByUserAndProduct(user, product);
+
+	    if (cart == null) {
+	        throw new CartException(AppConstants.CART_NOT_FOUND);
+	    }
+
+	    // ✅ Reuse existing logic (updateExistingCart)
+	    return updateExistingCart(cart, product, quantity);
 	}
-
 	@Override
 	public boolean removeFromCart(String email, Integer productId) {
 
@@ -89,23 +101,31 @@ public class CartServiceImpl implements CartService {
 	}
 
 	// ================= PRIVATE METHODS =================
-
 	private Cart updateExistingCart(Cart existingCart, Product product, int quantity) {
+
+	    // ✅ Null safety check
+	    if (existingCart.getProduct() == null) {
+	        throw new CartException(AppConstants.PRODUCT_NOT_FOUND);
+	    }
+
+	    Product cartProduct = existingCart.getProduct();
 
 	    int newQuantity = existingCart.getQuantity() + quantity;
 
+	    // ❗ Validate max cart quantity
 	    if (newQuantity > AppConstants.MAX_CART_QUANTITY) {
 	        throw new CartException(
-	            AppConstants.MAX_CART_QUANTITY_EXCEEDED + AppConstants.MAX_CART_QUANTITY
+	            AppConstants.MAX_QUANTITY_EXCEEDED + AppConstants.MAX_CART_QUANTITY
 	        );
 	    }
 
-	    if (newQuantity > product.getStockQuantity()) {
-	        throw new CartException(AppConstants.INSUFFICIENT_STOCK);
-	    }
+	    // ❗ Validate stock using latest product data
+	    productValidationService.validateStock(cartProduct, newQuantity);
 
+	    // ❗ Recalculate using latest product info
 	    existingCart.setQuantity(newQuantity);
-	    existingCart.setTotalPrice(calculateTotalPrice(product, newQuantity));
+	    existingCart.setPrice(cartProduct.getPrice());
+	    existingCart.setTotalPrice(calculateTotalPrice(cartProduct, newQuantity));
 
 	    return cartRepository.save(existingCart);
 	}
