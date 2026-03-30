@@ -92,15 +92,23 @@ public class CartServiceImpl implements CartService {
 
 	private Cart updateExistingCart(Cart existingCart, Product product, int quantity) {
 
-		int newQuantity = existingCart.getQuantity() + quantity;
+	    int newQuantity = existingCart.getQuantity() + quantity;
 
-		productValidationService.validateStock(product, quantity);
-		existingCart.setQuantity(newQuantity);
-		existingCart.setTotalPrice(calculateTotalPrice(product, newQuantity));
+	    if (newQuantity > AppConstants.MAX_CART_QUANTITY) {
+	        throw new CartException(
+	            AppConstants.MAX_CART_QUANTITY_EXCEEDED + AppConstants.MAX_CART_QUANTITY
+	        );
+	    }
 
-		return cartRepository.save(existingCart);
+	    if (newQuantity > product.getStockQuantity()) {
+	        throw new CartException(AppConstants.INSUFFICIENT_STOCK);
+	    }
+
+	    existingCart.setQuantity(newQuantity);
+	    existingCart.setTotalPrice(calculateTotalPrice(product, newQuantity));
+
+	    return cartRepository.save(existingCart);
 	}
-
 	private Cart createNewCart(User user, Product product, int quantity) {
 
 		productValidationService.validateStock(product, quantity);

@@ -2,6 +2,7 @@ package com.example.demo.Entity;
 
 import java.util.Date;
 
+import org.hibernate.annotations.SQLDelete;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -17,6 +18,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
+@SQLDelete(sql = "UPDATE product SET is_deleted = true WHERE id = ?")
 @Getter@Setter@NoArgsConstructor@AllArgsConstructor
 public class Product {
 
@@ -39,5 +41,5 @@ public class Product {
 	@ManyToOne
 	@JoinColumn(name = "user_id")
 	private User user;
-	private int isdeleted;
+    private boolean isDeleted = false;
 }

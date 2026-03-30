@@ -16,11 +16,6 @@ public interface ProductRepository extends JpaRepository<Product, Integer> {
 	boolean existsByNameAndUser(String name, User user);	
 
 	Page<Product> findByUser(User userid, Pageable pageable);
+
 	
-	@Modifying
-	@Transactional
-	@Query(value = "UPDATE product SET isdeleted = 1 WHERE id = ?1", nativeQuery = true)
-	int softDeleteProduct( Integer id);
-	
-	Page<Product> findByIsdeleted(int isDeleted, Pageable pageable);
-}
+	Page<Product> findByIsDeleted(boolean isDeleted, Pageable pageable);}

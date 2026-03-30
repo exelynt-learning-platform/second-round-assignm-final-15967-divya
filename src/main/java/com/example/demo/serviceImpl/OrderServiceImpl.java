@@ -26,138 +26,149 @@ import jakarta.transaction.Transactional;
 @Service
 public class OrderServiceImpl implements OrderService {
 
-    @Autowired
-    private UserRepository userRepository;
+	@Autowired
+	private UserRepository userRepository;
 
-    @Autowired
-    private CartRepository cartRepository;
+	@Autowired
+	private CartRepository cartRepository;
 
-    @Autowired
-    private OrderRepository orderRepository;
+	@Autowired
+	private OrderRepository orderRepository;
 
-    @Autowired
-    private OrderItemRepository orderItemRepository;
+	@Autowired
+	private OrderItemRepository orderItemRepository;
 
-    @Autowired
-    private ProductRepository productRepository;
-    
-    @Autowired
-    private ProductValidationService productValidationService;
+	@Autowired
+	private ProductRepository productRepository;
 
-    @Transactional
-    @Override
-    public Order placeOrder(String email, String shippingAddress) {
+	@Autowired
+	private ProductValidationService productValidationService;
 
-        validateShippingAddress(shippingAddress);
+	@Transactional
+	@Override
+	public Order placeOrder(String email, String shippingAddress) {
 
-        User user = getUserByEmail(email);
+		validateShippingAddress(shippingAddress);
 
-        List<Cart> cartItems = cartRepository.findByUserId(user.getId());
+		User user = getUserByEmail(email);
 
-        if (cartItems == null || cartItems.isEmpty()) {
-            throw new OrderException(AppConstants.CART_EMPTY);
-        }
+		List<Cart> cartItems = cartRepository.findByUserId(user.getId());
 
-        // ✅ SECURITY CHECK: validate ownership
-        validateCartOwnership(cartItems, user);
+		if (cartItems == null || cartItems.isEmpty()) {
+			throw new OrderException(AppConstants.CART_EMPTY);
+		}
 
-        Order order = createOrder(user, shippingAddress);
-        Order savedOrder = orderRepository.save(order);
+		// ✅ SECURITY CHECK: validate ownership
+		validateCartOwnership(cartItems, user);
 
-        double totalPrice = processCartItems(cartItems, savedOrder);
+		Order order = createOrder(user, shippingAddress);
+		Order savedOrder = orderRepository.save(order);
 
-        savedOrder.setTotalPrice(totalPrice);
-        orderRepository.save(savedOrder);
+		double totalPrice = processCartItems(cartItems, savedOrder);
 
-        cartRepository.deleteAll(cartItems);
+		savedOrder.setTotalPrice(totalPrice);
+		orderRepository.save(savedOrder);
 
-        return savedOrder;
-    }
-    private void validateCartOwnership(List<Cart> cartItems, User user) {
-        for (Cart cart : cartItems) {
-            if (cart.getUser() == null || !cart.getUser().getId().equals(user.getId())) {
-                throw new OrderException(AppConstants.Unauthorized_PRODUCT_ACCCESS);
-            }
-        }
-    }
+		cartRepository.deleteAll(cartItems);
 
-    @Override
-    public List<Order> getMyOrders(String email) {
-        User user = getUserByEmail(email);
-        return orderRepository.findByUserId(user.getId());
-    }
+		return savedOrder;
+	}
 
-    @Override
-    public List<Order> getAllOrders() {
-        return orderRepository.findAll();
-    }
+	private void validateCartOwnership(List<Cart> cartItems, User user) {
 
-    // ================= HELPER METHODS =================
+		for (Cart cart : cartItems) {
 
-    private double processCartItems(List<Cart> cartItems, Order order) {
+			if (cart.getUser() == null || !cart.getUser().getId().equals(user.getId())) {
+				throw new OrderException(AppConstants.UNAUTHORIZED_PRODUCT_ACCESS);
+			}
 
-        double totalPrice = 0;
+			if (cart.getProduct() == null || cart.getProduct().getId() == null) {
+				throw new OrderException(AppConstants.PRODUCT_NOT_FOUND);
+			}
 
-        for (Cart cart : cartItems) {
+			Product product = productRepository.findById(cart.getProduct().getId())
+					.orElseThrow(() -> new OrderException(AppConstants.PRODUCT_NOT_FOUND));
 
-            Product product = getProductById(cart.getProduct().getId());
+			if (product.isDeleted()) {
+				throw new OrderException("Product is no longer available");
+			}
 
-            productValidationService.validateStock(product, cart.getQuantity());
-            totalPrice += cart.getTotalPrice();
+		}
+	}
 
-            reduceStock(product, cart.getQuantity());
+	@Override
+	public List<Order> getMyOrders(String email) {
+		User user = getUserByEmail(email);
+		return orderRepository.findByUserId(user.getId());
+	}
 
-            saveOrderItem(order, cart, product);
-        }
+	@Override
+	public List<Order> getAllOrders() {
+		return orderRepository.findAll();
+	}
 
-        return totalPrice;
-    }
+	// ================= HELPER METHODS =================
 
-    private void validateShippingAddress(String address) {
-        if (address == null || address.trim().length() < 10 || address.length() > 200) {
-            throw new OrderException(AppConstants.INVALID_ADDRESS);
-        }
-    }
+	private double processCartItems(List<Cart> cartItems, Order order) {
 
-    private User getUserByEmail(String email) {
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new OrderException(AppConstants.USER_NOT_FOUND));
-    }
+		double totalPrice = 0;
 
-    private Product getProductById(Integer productId) {
-        return productRepository.findById(productId)
-                .orElseThrow(() ->
-                        new OrderException(AppConstants.PRODUCT_NOT_FOUND + productId));
-    }
+		for (Cart cart : cartItems) {
 
+			Product product = getProductById(cart.getProduct().getId());
 
+			productValidationService.validateStock(product, cart.getQuantity());
+			totalPrice += cart.getTotalPrice();
 
-    private void reduceStock(Product product, int quantity) {
-        product.setStockQuantity(product.getStockQuantity() - quantity);
-        productRepository.save(product);
-    }
+			reduceStock(product, cart.getQuantity());
 
-    private void saveOrderItem(Order order, Cart cart, Product product) {
+			saveOrderItem(order, cart, product);
+		}
 
-        OrderItem item = new OrderItem();
-        item.setOrder(order);
-        item.setProduct(product);
-        item.setProductName(product.getName());
-        item.setQuantity(cart.getQuantity());
-        item.setPrice(product.getPrice());
+		return totalPrice;
+	}
 
-        orderItemRepository.save(item);
-    }
+	private void validateShippingAddress(String address) {
+		if (address == null || address.trim().length() < 10 || address.length() > 200) {
+			throw new OrderException(AppConstants.INVALID_ADDRESS);
+		}
+	}
 
-    private Order createOrder(User user, String shippingAddress) {
+	private User getUserByEmail(String email) {
+		return userRepository.findByEmail(email).orElseThrow(() -> new OrderException(AppConstants.USER_NOT_FOUND));
+	}
 
-        Order order = new Order();
-        order.setUser(user);
-        order.setShippingAddress(shippingAddress);
-        order.setPaymentStatus(AppConstants.PAYMENT_PENDING);
+	private Product getProductById(Integer productId) {
+		return productRepository.findById(productId)
+				.orElseThrow(() -> new OrderException(AppConstants.PRODUCT_NOT_FOUND + productId));
+	}
+
+	private void reduceStock(Product product, int quantity) {
+		product.setStockQuantity(product.getStockQuantity() - quantity);
+		productRepository.save(product);
+	}
+
+	private void saveOrderItem(Order order, Cart cart, Product product) {
+
+		OrderItem item = new OrderItem();
+		item.setOrder(order);
+		item.setProduct(product);
+		item.setProductName(product.getName());
+		item.setQuantity(cart.getQuantity());
+		item.setPrice(product.getPrice());
+
+		orderItemRepository.save(item);
+	}
+
+	private Order createOrder(User user, String shippingAddress) {
+
+		Order order = new Order();
+		order.setUser(user);
+		order.setShippingAddress(shippingAddress);
+		order.setPaymentStatus(AppConstants.PAYMENT_PENDING);
 //        order.setStatus(AppConstants.ORDER_CREATED);
-        order.setCreatedDate(new Date());
+		order.setCreatedDate(new Date());
 
-        return order;
-    }
+		return order;
+	}
 }

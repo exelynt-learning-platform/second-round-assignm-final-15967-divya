@@ -1,8 +1,7 @@
 package com.example.demo.config;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.*;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -25,23 +24,23 @@ public class SecurityConfig {
     @Autowired
     private RateLimitFilter rateLimitFilter;
 
-//    public static final String USER = "USER";
-//    public static final String ADMIN = "ADMIN";
+    public static final String ROLE_USER = "USER";
+    public static final String ROLE_ADMIN = "ADMIN";
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
         http
-            .csrf(csrf -> csrf.disable()) // API based (can enable for web apps)
+            .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/auth/**").permitAll()
 
-                .requestMatchers("/cart/**").hasRole("USER")
-                .requestMatchers("/orders/place").hasRole("USER")
-                .requestMatchers("/orders/my").hasRole("USER")
-                .requestMatchers("/payment/**").hasRole("USER")
+                .requestMatchers("/cart/**").hasRole(ROLE_USER)
+                .requestMatchers("/orders/place").hasRole(ROLE_USER)
+                .requestMatchers("/orders/my").hasRole(ROLE_USER)
+                .requestMatchers("/payment/**").hasRole(ROLE_USER)
 
-                .requestMatchers("/products/**").hasRole("ADMIN")
+                .requestMatchers("/products/**").hasRole(ROLE_ADMIN)
 
                 .anyRequest().authenticated()
             )
