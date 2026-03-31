@@ -58,10 +58,6 @@ public class JwtUtil {
             throw new IllegalStateException("JWT secret must be at least 256 bits (32 bytes)");
         }
 
-        // ✅ CHANGE: Entropy check (avoid weak repeating patterns)
-        if (secret.matches("(.)\\1{10,}")) {
-            throw new IllegalStateException("JWT secret is too weak (repeating pattern detected)");
-        }
     }
 
     // ✅ Generate Token

@@ -48,6 +48,7 @@ public class OrderServiceImpl implements OrderService {
 	private ProductValidationService productValidationService;
 	@Autowired
 	private CartConfig cartConfig;
+
 	@Transactional
 	@Override
 	public Order placeOrder(String email, String shippingAddress) {
@@ -156,22 +157,26 @@ public class OrderServiceImpl implements OrderService {
 
 	private void validateShippingAddress(String shippingAddress) {
 
-	    if (shippingAddress == null || shippingAddress.trim().isEmpty()) {
-	        throw new OrderException(AppConstants.ADDRESS_EMPTY);
-	    }
+		if (shippingAddress == null || shippingAddress.trim().isEmpty()) {
+			throw new OrderException(AppConstants.ADDRESS_EMPTY);
+		}
 
-	    int length = shippingAddress.trim().length();
+		int length = shippingAddress.trim().length();
 
-	    if (length < cartConfig.getMinAddressLength()) {
-	        throw new OrderException(AppConstants.ADDRESS_TOO_SHORT);
-	    }
+		if (length < cartConfig.getMinAddressLength()) {
+			throw new OrderException(AppConstants.ADDRESS_TOO_SHORT);
+		}
 
-	    if (length > cartConfig.getMaxAddressLength()) {
-	        throw new OrderException(AppConstants.ADDRESS_TOO_LONG);
-	    }
+		if (length > cartConfig.getMaxAddressLength()) {
+			throw new OrderException(AppConstants.ADDRESS_TOO_LONG);
+		}
 	}
 
 	private User getUserByEmail(String email) {
+		if (email == null || email.trim().isEmpty()) {
+			throw new OrderException(AppConstants.EMPTY_EMAIL);
+		}
+
 		return userRepository.findByEmail(email).orElseThrow(() -> new OrderException(AppConstants.USER_NOT_FOUND));
 	}
 

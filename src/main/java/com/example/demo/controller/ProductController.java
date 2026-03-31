@@ -4,7 +4,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import com.example.demo.Entity.Product;
 import com.example.demo.config.CartConfig;
@@ -32,9 +40,6 @@ public class ProductController {
 
 		String email = SecurityUtil.getCurrentUserEmail();
 
-		if (product == null) {
-			throw new IllegalArgumentException(AppConstants.INVALID_PRODUCT);
-		}
 
 		log.info("Creating product for user: {}", email);
 
@@ -63,10 +68,6 @@ public class ProductController {
 	@GetMapping("/{id}")
 	public ResponseEntity<Product> getById(@PathVariable("id") Integer id) {
 
-		if (id == null || id <= 0) {
-			throw new IllegalArgumentException(AppConstants.INVALID_ID);
-		}
-
 		log.debug("Fetching product by id: {}", id);
 
 		Product product = productService.getById(id);
@@ -79,14 +80,6 @@ public class ProductController {
 	public ResponseEntity<Product> update(@PathVariable("id") Integer id, @Valid @RequestBody Product product) {
 
 		String email = SecurityUtil.getCurrentUserEmail();
-
-		if (id == null || id <= 0) {
-			throw new IllegalArgumentException(AppConstants.INVALID_ID);
-		}
-
-		if (product == null) {
-			throw new IllegalArgumentException(AppConstants.INVALID_PRODUCT);
-		}
 
 		log.info("Updating product id: {} by user: {}", id, email);
 

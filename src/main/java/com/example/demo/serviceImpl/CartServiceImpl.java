@@ -125,11 +125,7 @@ public class CartServiceImpl implements CartService {
 
 		int newQuantity = existingCart.getQuantity() + quantity;
 
-		if (newQuantity > cartConfig.getMaxQuantity()) {
-			throw new CartException(
-				AppConstants.MAX_QUANTITY_EXCEEDED + cartConfig.getMaxQuantity()
-			);
-		}
+	    validateQuantity(newQuantity); 
 
 		validateStock(product, newQuantity);
 

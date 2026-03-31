@@ -27,68 +27,61 @@ import com.example.demo.security.JwtFilter;
 @EnableMethodSecurity
 public class SecurityConfig {
 
-    @Autowired
-    private JwtFilter jwtFilter;
+	@Autowired
+	private JwtFilter jwtFilter;
 
-    @Autowired
-    private RateLimitFilter rateLimitFilter;
+	@Autowired
+	private RateLimitFilter rateLimitFilter;
 
-    @Autowired
-    private CustomAccessDeniedHandler accessDeniedHandler;
+	@Autowired
+	private CustomAccessDeniedHandler accessDeniedHandler;
 
-    @Autowired
-    private CustomAuthenticationEntryPoint authenticationEntryPoint;
+	@Autowired
+	private CustomAuthenticationEntryPoint authenticationEntryPoint;
 
-    @Autowired
-    private CorsProperties corsProperties;
+	@Autowired
+	private CorsProperties corsProperties;
 
-    @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+	@Bean
+	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
-        http
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .csrf(csrf -> csrf.disable())
-            .exceptionHandling(ex -> ex
-                .accessDeniedHandler(accessDeniedHandler)
-                .authenticationEntryPoint(authenticationEntryPoint)
-            )
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/auth/**").permitAll()
-                .requestMatchers("/cart/**").hasAuthority(Role.ROLE_USER.name())
-                .requestMatchers("/orders/place").hasAuthority(Role.ROLE_USER.name())
-                .requestMatchers("/orders/my").hasAuthority(Role.ROLE_USER.name())
-                .requestMatchers("/payment/**").hasAuthority(Role.ROLE_USER.name())
-                .requestMatchers("/products/getAllproducts").hasAuthority(Role.ROLE_USER.name())
-                .requestMatchers("/products/**").hasAuthority(Role.ROLE_ADMIN.name())
-                .requestMatchers("/orders/all").hasAuthority(Role.ROLE_ADMIN.name())
-                .anyRequest().authenticated()
-            )
-            .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+		http.cors(cors -> cors.configurationSource(corsConfigurationSource())).csrf(csrf -> csrf.disable())
+				.exceptionHandling(ex -> ex.accessDeniedHandler(accessDeniedHandler)
+						.authenticationEntryPoint(authenticationEntryPoint))
+				.authorizeHttpRequests(auth -> auth.requestMatchers("/auth/**").permitAll().requestMatchers("/cart/**")
+						.hasAuthority(Role.ROLE_USER.name()).requestMatchers("/orders/place")
+						.hasAuthority(Role.ROLE_USER.name()).requestMatchers("/orders/my")
+						.hasAuthority(Role.ROLE_USER.name()).requestMatchers("/payment/**")
+						.hasAuthority(Role.ROLE_USER.name()).requestMatchers("/products/getAllproducts")
+						.hasAuthority(Role.ROLE_USER.name()).requestMatchers("/products/**")
+						.hasAuthority(Role.ROLE_ADMIN.name()).requestMatchers("/orders/all")
+						.hasAuthority(Role.ROLE_ADMIN.name()).anyRequest().authenticated())
+				.sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
-        http.addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class);
-        http.addFilterAfter(jwtFilter, RateLimitFilter.class);
+		http.addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class);
+		http.addFilterAfter(jwtFilter, RateLimitFilter.class);
 
-        return http.build();
-    }
+		return http.build();
+	}
 
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
+	@Bean
+	public CorsConfigurationSource corsConfigurationSource() {
 
-        CorsConfiguration configuration = new CorsConfiguration();
+		CorsConfiguration configuration = new CorsConfiguration();
 
-        configuration.setAllowedOrigins(corsProperties.getAllowedOrigins());
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("*"));
-        configuration.setAllowCredentials(true);
+		configuration.setAllowedOrigins(corsProperties.getAllowedOrigins());
+		configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+		configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With"));
+		configuration.setAllowCredentials(true);
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
+		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+		source.registerCorsConfiguration("/**", configuration);
 
-        return source;
-    }
+		return source;
+	}
 
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
+	@Bean
+	public PasswordEncoder passwordEncoder() {
+		return new BCryptPasswordEncoder();
+	}
 }
