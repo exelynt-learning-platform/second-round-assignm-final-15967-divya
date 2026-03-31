@@ -46,7 +46,7 @@ public class CartController {
 	public ResponseEntity<?> remove(@PathVariable Integer productId) {
 
 		boolean isRemoved = cartService.removeFromCart(SecurityUtil.getCurrentUserEmail(), productId);
-		return isRemoved ? ResponseEntity.status(HttpStatus.ACCEPTED).body(AppConstants.PRODUCT_REMOVED_FROM_CART)
+		return isRemoved ? ResponseEntity.status(HttpStatus.ACCEPTED).body(AppConstants.CART_REMOVED_SUCCESS)
 				: ResponseEntity.status(HttpStatus.NOT_FOUND).body(AppConstants.PRODUCT_NOT_FOUND_IN_CART);
 	}
 }

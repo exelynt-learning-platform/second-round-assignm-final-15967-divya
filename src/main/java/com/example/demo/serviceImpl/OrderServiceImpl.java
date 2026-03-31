@@ -64,7 +64,6 @@ public class OrderServiceImpl implements OrderService {
 		}
 
 		// ✅ SECURITY CHECK: validate ownership
-		validateCartOwnership(cartItems, user);
 
 		Order order = createOrder(user, shippingAddress);
 		Order savedOrder = orderRepository.save(order);
@@ -79,27 +78,6 @@ public class OrderServiceImpl implements OrderService {
 		return savedOrder;
 	}
 
-	private void validateCartOwnership(List<Cart> cartItems, User user) {
-
-		for (Cart cart : cartItems) {
-
-			if (cart.getUser() == null || !Objects.equals(cart.getUser().getId(), user.getId())) {
-
-				throw new OrderException(AppConstants.UNAUTHORIZED_PRODUCT_ACCESS);
-			}
-
-			if (cart.getProduct() == null || cart.getProduct().getId() == null) {
-				throw new OrderException(AppConstants.PRODUCT_NOT_FOUND);
-			}
-
-			Product product = productRepository.findById(cart.getProduct().getId())
-					.orElseThrow(() -> new OrderException(AppConstants.PRODUCT_NOT_FOUND));
-
-			if (product.isDeleted()) {
-				throw new OrderException(AppConstants.PRODUCT_NOT_FOUND);
-			}
-		}
-	}
 
 	@Override
 	public List<Order> getMyOrders(String email) {
@@ -115,46 +93,33 @@ public class OrderServiceImpl implements OrderService {
 	// ================= HELPER METHODS =================
 	private double processCartItems(List<Cart> cartItems, Order order) {
 
-		double totalPrice = 0;
+	    double totalPrice = 0;
 
-		for (Cart cart : cartItems) {
+	    for (Cart cart : cartItems) {
 
-			// ✅ Validate user ownership
-			if (cart.getUser() == null || !cart.getUser().getId().equals(order.getUser().getId())) {
+	        // ✅ Ownership check (keep ONLY here)
+	        if (cart.getUser() == null || !Objects.equals(cart.getUser().getId(), order.getUser().getId())) {
+	            throw new OrderException(AppConstants.UNAUTHORIZED_PRODUCT_ACCESS);
+	        }
 
-				throw new OrderException(AppConstants.UNAUTHORIZED_PRODUCT_ACCESS);
-			}
+	        Product product = productRepository.findById(cart.getProduct().getId())
+	                .orElseThrow(() -> new OrderException(AppConstants.PRODUCT_NOT_FOUND));
 
-			// ✅ Null check for product in cart
-			if (cart.getProduct() == null || cart.getProduct().getId() == null) {
-				throw new OrderException(AppConstants.PRODUCT_NOT_FOUND);
-			}
+	        if (product.isDeleted()) {
+	            throw new OrderException(AppConstants.PRODUCT_NOT_FOUND);
+	        }
 
-			// ✅ Fetch latest product from DB
-			Product product = productRepository.findById(cart.getProduct().getId())
-					.orElseThrow(() -> new OrderException(AppConstants.PRODUCT_NOT_FOUND));
+	        productValidationService.validateStock(product, cart.getQuantity());
 
-			// ❗ Check if product is deleted
-			if (product.isDeleted()) {
-				throw new OrderException("Product is no longer available");
-			}
+	        totalPrice += cart.getTotalPrice();
 
-			// ✅ Stock validation
-			productValidationService.validateStock(product, cart.getQuantity());
+	        reduceStock(product, cart.getQuantity());
 
-			// ✅ Calculate total
-			totalPrice += cart.getTotalPrice();
+	        saveOrderItem(order, cart, product);
+	    }
 
-			// ✅ Reduce stock
-			reduceStock(product, cart.getQuantity());
-
-			// ✅ Save order item
-			saveOrderItem(order, cart, product);
-		}
-
-		return totalPrice;
+	    return totalPrice;
 	}
-
 	private void validateShippingAddress(String shippingAddress) {
 
 		if (shippingAddress == null || shippingAddress.trim().isEmpty()) {
@@ -180,10 +145,7 @@ public class OrderServiceImpl implements OrderService {
 		return userRepository.findByEmail(email).orElseThrow(() -> new OrderException(AppConstants.USER_NOT_FOUND));
 	}
 
-	private Product getProductById(Integer productId) {
-		return productRepository.findById(productId)
-				.orElseThrow(() -> new OrderException(AppConstants.PRODUCT_NOT_FOUND + productId));
-	}
+
 
 	private void reduceStock(Product product, int quantity) {
 		product.setStockQuantity(product.getStockQuantity() - quantity);

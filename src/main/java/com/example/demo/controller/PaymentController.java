@@ -18,7 +18,6 @@ import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @RequestMapping("/payment")
-@Validated
 @Slf4j
 public class PaymentController {
 

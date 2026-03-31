@@ -52,6 +52,7 @@ public class ProductController {
 	@GetMapping
 	public ResponseEntity<Page<Product>> getProductsByOwner(@RequestParam(required = false) Integer page,
 			@RequestParam(required = false) Integer size,
+			 @RequestParam(defaultValue = "id") String sortBy,
 			 @RequestParam(defaultValue = "asc") String sortDir) {
 
 		String email = SecurityUtil.getCurrentUserEmail();
@@ -60,7 +61,7 @@ public class ProductController {
 
 		log.info("Fetching products for user: {}", email);
 
-	    Page<Product> products = productService.getProductsByOwner(email, finalPage, finalSize,sortDir);
+	    Page<Product> products = productService.getProductsByOwner(email, finalPage, finalSize,sortBy,sortDir);
 
 		return ResponseEntity.ok(products);
 	}
@@ -104,13 +105,15 @@ public class ProductController {
 	}	
 	
 	@GetMapping("/getAllproducts")
-	public ResponseEntity<?> getAllProducts(@RequestParam(name = "page", defaultValue = "0") int page,
-			@RequestParam(name = "size", defaultValue = "10") int size) {
+	public ResponseEntity<?> getAllProducts(
+	        @RequestParam(name = "page", defaultValue = "0") int page,
+	        @RequestParam(name = "size", defaultValue = "10") int size,
+	        @RequestParam(name = "sortBy", defaultValue = "id") String sortBy,
+	        @RequestParam(name = "sortDir", defaultValue = "desc") String sortDir) {
 
-		Page<Product> products = productService.getAllProducts(page, size);
-		return ResponseEntity.ok(products);
+	    Page<Product> products = productService.getAllProducts(page, size, sortBy, sortDir);
+	    return ResponseEntity.ok(products);
 	}
-	
 	
 
 }

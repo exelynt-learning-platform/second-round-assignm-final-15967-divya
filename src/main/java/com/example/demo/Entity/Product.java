@@ -2,6 +2,7 @@ package com.example.demo.Entity;
 
 import org.hibernate.annotations.SQLDelete;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -11,7 +12,6 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.AllArgsConstructor;
@@ -21,6 +21,7 @@ import lombok.Setter;
 
 @Entity
 @Table(name = "products", uniqueConstraints = { @UniqueConstraint(columnNames = { "name", "user_id" ,"is_deleted"}) })
+@SuppressWarnings("HibernateSQLQueryInspection")
 @SQLDelete(sql = "UPDATE products SET is_deleted = true WHERE id = ?")
 @Getter
 @Setter
@@ -51,5 +52,5 @@ public class Product {
 	@JoinColumn(name = "user_id")
 	private User user;
 
-	private boolean isDeleted = false;
-}
+	@Column(name = "is_deleted")
+	private boolean isDeleted = false;}

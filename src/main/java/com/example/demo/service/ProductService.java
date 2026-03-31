@@ -8,7 +8,7 @@ public interface ProductService {
 
 	Product create(Product product, String email);
 
-	Page<Product> getProductsByOwner(String email, int page, int size,String sortDir);
+	Page<Product> getProductsByOwner(String email, int page, int size,String sortBy,String sortDir);
 
 	Product getById(int id);
 
@@ -16,5 +16,5 @@ public interface ProductService {
 
 	boolean delete(Integer id);
 
-	Page<Product> getAllProducts(int page, int size);
-}
+	public Page<Product> getAllProducts(int page, int size, String sortBy, String sortDir);
+	}

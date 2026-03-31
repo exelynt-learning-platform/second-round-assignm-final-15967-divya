@@ -18,6 +18,7 @@ import com.example.demo.Entity.Product;
 import com.example.demo.Entity.User;
 import com.example.demo.config.CartConfig;
 import com.example.demo.constants.AppConstants;
+import com.example.demo.enums.ProductSortField;
 import com.example.demo.exception.ProductException;
 import com.example.demo.repository.ProductRepository;
 import com.example.demo.repository.UserRepository;
@@ -64,15 +65,19 @@ public class ProductServiceImpl implements ProductService {
 	}
 
 	@Override
-	@Cacheable(value = "productsCache", key = "{#email, #page, #size, #sortDir}")
-	public Page<Product> getProductsByOwner(String email, int page, int size, String sortDir) {
+	@Cacheable(value = "productsCache", key = "{#email, #page, #size,#sortBy,  #sortDir}")
+	public Page<Product> getProductsByOwner(String email, int page, int size, String sortBy, String sortDir) {
 
+		String validSortBy = ProductSortField.from(sortBy);
+		Sort.Direction direction;
+		try {
+			direction = Sort.Direction.fromString(sortDir);
+		} catch (IllegalArgumentException ex) {
+			throw new ProductException(AppConstants.INVALID_SORT_DIRECTION + sortDir);
+		}
 
-		Sort sort = sortDir.equalsIgnoreCase("asc") 
-		        ? Sort.by("id").ascending() 
-		        : Sort.by("id").descending();
+		Sort sort = Sort.by(direction, validSortBy);
 		Pageable pageable = PageRequest.of(page, size, sort);
-
 		User user = userRepository.findByEmail(email)
 				.orElseThrow(() -> new ProductException(AppConstants.USER_NOT_FOUND));
 
@@ -109,7 +114,8 @@ public class ProductServiceImpl implements ProductService {
 
 		validateProductOwnership(existingProduct, currentUser);
 
-		boolean exists = productRepository.existsByNameAndUserAndIdNotAndIsDeletedFalse(updatedProduct.getName(), currentUser, id);
+		boolean exists = productRepository.existsByNameAndUserAndIdNotAndIsDeletedFalse(updatedProduct.getName(),
+				currentUser, id);
 
 		if (exists) {
 			throw new ProductException(AppConstants.PRODUCT_ALREADY_EXISTS);
@@ -123,25 +129,25 @@ public class ProductServiceImpl implements ProductService {
 		return productRepository.save(existingProduct);
 	}
 
-	@Override
-	@CacheEvict(value = "productsCache", allEntries = true)
+	@CacheEvict(value = "productsCache", key = "#id")
 	public boolean delete(Integer id) {
 
-		String email = SecurityUtil.getCurrentUserEmail();
+	    String email = SecurityUtil.getCurrentUserEmail();
 
-		User currentUser = userRepository.findByEmail(email)
-				.orElseThrow(() -> new ProductException(AppConstants.USER_NOT_FOUND));
+	    User currentUser = userRepository.findByEmail(email)
+	            .orElseThrow(() -> new ProductException(AppConstants.USER_NOT_FOUND));
 
-		Product product = productRepository.findById(id)
-				.orElseThrow(() -> new ProductException(AppConstants.PRODUCT_NOT_FOUND + id));
+	    Product product = productRepository.findById(id)
+	            .orElseThrow(() -> new ProductException(AppConstants.PRODUCT_NOT_FOUND + id));
 
-		validateProductOwnership(product, currentUser);
+	    validateProductOwnership(product, currentUser);
 
-		productRepository.delete(product);
+	    product.setDeleted(true);
+	    productRepository.save(product);
 
-		log.info("Product deleted successfully. Id: {}", id);
+	    log.info("Product soft-deleted successfully. Id: {}", id);
 
-		return true;
+	    return true;
 	}
 
 	private void validateProductOwnership(Product product, User currentUser) {
@@ -155,9 +161,13 @@ public class ProductServiceImpl implements ProductService {
 		}
 	}
 
-	public Page<Product> getAllProducts(int page, int size) {
+	public Page<Product> getAllProducts(int page, int size, String sortBy, String sortDir) {
 
-		Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
+		String sortField = ProductSortField.from(sortBy);
+
+		Sort sort = sortDir.equalsIgnoreCase("asc") ? Sort.by(sortField).ascending() : Sort.by(sortField).descending();
+
+		Pageable pageable = PageRequest.of(page, size, sort);
 
 		Page<Product> products = productRepository.findByIsDeleted(false, pageable);
 

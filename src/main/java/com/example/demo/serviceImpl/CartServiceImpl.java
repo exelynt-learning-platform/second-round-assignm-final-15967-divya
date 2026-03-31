@@ -80,17 +80,13 @@ public class CartServiceImpl implements CartService {
 	@Override
 	public boolean removeFromCart(String email, Integer productId) {
 
-		User user = getUserByEmail(email);
-		Product product = getProductById(productId);
+	    User user = getUserByEmail(email);
+	    Product product = getProductById(productId);
 
-		Cart cart = getCartByUserAndProduct(user, product);
+	    Cart cart = getCartByUserAndProduct(user, product); // will throw if not found
 
-		if (cart == null) {
-			return false;
-		}
-
-		cartRepository.delete(cart);
-		return true;
+	    cartRepository.delete(cart);
+	    return true;
 	}
 
 	// ================= COMMON VALIDATION =================

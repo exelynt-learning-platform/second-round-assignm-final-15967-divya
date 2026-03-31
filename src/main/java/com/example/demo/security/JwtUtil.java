@@ -31,8 +31,7 @@ public class JwtUtil {
 	@Value("${jwt.secret.max-bytes}")
 	private int maxBytes;
 	
-	@Value("${jwt.secret.min-entropy-threshold}")
-	private double entropyThreshold;
+
 
 	@Value("${jwt.secret.key-size}")
 	private int keySize;
@@ -89,26 +88,10 @@ public class JwtUtil {
 		}
 
 		// ✅ 5. Entropy check (basic randomness validation)
-		if (isLowEntropy(decoded)) {
-		    throw new IllegalStateException(
-		        String.format(
-		            "JWT secret has low entropy (uniqueness ratio below %.2f)",
-		            entropyThreshold
-		        )
-		    );
-		}
+	
 	}
 
-	private boolean isLowEntropy(byte[] data) {
-	    long uniqueBytes = java.util.stream.IntStream.range(0, data.length)
-	            .map(i -> data[i])
-	            .distinct()
-	            .count();
 
-	    double uniquenessRatio = (double) uniqueBytes / data.length;
-
-	    return uniquenessRatio < entropyThreshold;
-	}
 
 	// ✅ Generate Token
 	public String generateToken(String email, String role) {

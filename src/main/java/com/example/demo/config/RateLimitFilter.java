@@ -2,6 +2,7 @@ package com.example.demo.config;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -14,15 +15,25 @@ import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-
+import org.springframework.beans.factory.annotation.Value;
 @Component
 public class RateLimitFilter implements Filter {
 
     @Autowired
     private StringRedisTemplate redisTemplate;
 
-    private static final int MAX_ATTEMPTS = 10;
-    private static final long TIME_WINDOW = 15 * 60; // 15 minutes
+    @Value("${ratelimit.max-attempts}")
+    private int maxAttempts;
+
+    @Value("${ratelimit.time-window}")
+    private long timeWindow;
+
+    private static final List<String> RATE_LIMITED_PATHS = List.of(
+            "/auth/login",
+            "/auth/register",
+            "/payment",
+            "/orders/place"
+    );
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
@@ -33,24 +44,29 @@ public class RateLimitFilter implements Filter {
 
         String path = req.getRequestURI();
 
-        if ("/auth/login".equals(path)) {
+        if (isRateLimitedEndpoint(path)) {
 
             String key = req.getRemoteAddr();
-            String redisKey = "rate_limit:" + key;
+            String redisKey = "rate_limit:" + path + ":" + key;
 
             Long attempts = redisTemplate.opsForValue().increment(redisKey);
 
             if (attempts != null && attempts == 1) {
-                redisTemplate.expire(redisKey, Duration.ofSeconds(TIME_WINDOW));
+                redisTemplate.expire(redisKey, Duration.ofSeconds(timeWindow));
             }
 
-            if (attempts != null && attempts > MAX_ATTEMPTS) {
+            if (attempts != null && attempts > maxAttempts) {
                 res.setStatus(429);
-                res.getWriter().write("Too many login attempts. Try later.");
+                res.getWriter().write("Too many requests. Try later.");
                 return;
             }
         }
 
         chain.doFilter(request, response);
+    }
+
+    private boolean isRateLimitedEndpoint(String path) {
+        return RATE_LIMITED_PATHS.stream()
+                .anyMatch(path::startsWith);
     }
 }
