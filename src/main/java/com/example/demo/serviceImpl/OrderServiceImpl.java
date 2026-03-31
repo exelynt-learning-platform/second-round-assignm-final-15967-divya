@@ -1,5 +1,6 @@
 package com.example.demo.serviceImpl;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
@@ -16,6 +17,7 @@ import com.example.demo.Entity.Product;
 import com.example.demo.Entity.User;
 import com.example.demo.common.PaginationUtil;
 import com.example.demo.config.CartConfig;
+import com.example.demo.config.PaginationConfig;
 import com.example.demo.constants.AppConstants;
 import com.example.demo.enums.OrderSortField;
 import com.example.demo.enums.PaymentStatus;
@@ -53,6 +55,9 @@ public class OrderServiceImpl implements OrderService {
 	@Autowired
 	private CartConfig cartConfig;
 
+	@Autowired
+	private PaginationConfig paginationConfig;
+
 	@Transactional
 	@Override
 	public Order placeOrder(String email, String shippingAddress) {
@@ -61,13 +66,7 @@ public class OrderServiceImpl implements OrderService {
 
 		User user = getUserByEmail(email);
 
-		List<Cart> cartItems = cartRepository.findByUserId(user.getId());
-
-		if (cartItems == null || cartItems.isEmpty()) {
-			throw new OrderException(AppConstants.CART_EMPTY);
-		}
-
-		// ✅ SECURITY CHECK: validate ownership
+		List<Cart> cartItems = getCartItems(user);
 
 		Order order = createOrder(user, shippingAddress);
 		Order savedOrder = orderRepository.save(order);
@@ -84,15 +83,26 @@ public class OrderServiceImpl implements OrderService {
 
 	@Override
 	public List<Order> getMyOrders(String email) {
-		User user = getUserByEmail(email);
-		return orderRepository.findByUserId(user.getId());
+		if (email == null || email.isBlank()) {
+			throw new OrderException(AppConstants.EMPTY_EMAIL);
+		}
+
+		User user = userRepository.findByEmail(email)
+				.orElseThrow(() -> new OrderException(AppConstants.USER_NOT_FOUND));
+
+		List<Order> orders = orderRepository.findByUserId(user.getId());
+
+		if (orders == null) {
+			return new ArrayList<>();
+		}
+		return orders;
 	}
 
 	@Override
 	public Page<Order> getAllOrders(int page, int size, String sortBy, String sortDir) {
 
-		Pageable pageable = PaginationUtil.createPageable(page, size, sortBy, sortDir, cartConfig.getDefaultPage(),
-				cartConfig.getDefaultSize(), OrderSortField::from);
+		Pageable pageable = PaginationUtil.createPageable(page, size, sortBy, sortDir, paginationConfig.getDefaultPage(),
+				paginationConfig.getDefaultSize(), OrderSortField::from);
 		Page<Order> orders = orderRepository.findAll(pageable);
 
 		return orders;
@@ -104,29 +114,67 @@ public class OrderServiceImpl implements OrderService {
 		double totalPrice = 0;
 
 		for (Cart cart : cartItems) {
+			validateCartOwnership(cart, order);
 
-			// ✅ Ownership check (keep ONLY here)
-			if (cart.getUser() == null || !Objects.equals(cart.getUser().getId(), order.getUser().getId())) {
-				throw new OrderException(AppConstants.UNAUTHORIZED_PRODUCT_ACCESS);
-			}
-
-			Product product = productRepository.findById(cart.getProduct().getId())
-					.orElseThrow(() -> new OrderException(AppConstants.PRODUCT_NOT_FOUND));
-
-			if (product.isDeleted()) {
-				throw new OrderException(AppConstants.PRODUCT_NOT_FOUND);
-			}
+			Product product = getValidProduct(cart);
 
 			productValidationService.validateStock(product, cart.getQuantity());
 
-			totalPrice += cart.getTotalPrice();
+			totalPrice += calculateItemTotal(cart);
 
-			reduceStock(product, cart.getQuantity());
+			updateStock(product, cart.getQuantity());
 
-			saveOrderItem(order, cart, product);
+			createOrderItem(order, cart, product);
 		}
 
 		return totalPrice;
+	}
+
+	private void validateCartOwnership(Cart cart, Order order) {
+		if (cart.getUser() == null || !Objects.equals(cart.getUser().getId(), order.getUser().getId())) {
+			throw new OrderException(AppConstants.UNAUTHORIZED_PRODUCT_ACCESS);
+		}
+	}
+
+	private Product getValidProduct(Cart cart) {
+		Product product = productRepository.findById(cart.getProduct().getId())
+				.orElseThrow(() -> new OrderException(AppConstants.PRODUCT_NOT_FOUND));
+
+		if (product.isDeleted()) {
+			throw new OrderException(AppConstants.PRODUCT_NOT_FOUND);
+		}
+
+		return product;
+	}
+
+	private double calculateItemTotal(Cart cart) {
+		return cart.getTotalPrice();
+	}
+
+	private void updateStock(Product product, int quantity) {
+		product.setStockQuantity(product.getStockQuantity() - quantity);
+		productRepository.save(product);
+	}
+
+	private void createOrderItem(Order order, Cart cart, Product product) {
+		OrderItem item = new OrderItem();
+		item.setOrder(order);
+		item.setProduct(product);
+		item.setProductName(product.getName());
+		item.setQuantity(cart.getQuantity());
+		item.setPrice(product.getPrice());
+
+		orderItemRepository.save(item);
+	}
+
+	private List<Cart> getCartItems(User user) {
+		List<Cart> cartItems = cartRepository.findByUserId(user.getId());
+
+		if (cartItems == null || cartItems.isEmpty()) {
+			throw new OrderException(AppConstants.CART_EMPTY);
+		}
+
+		return cartItems;
 	}
 
 	private void validateShippingAddress(String shippingAddress) {
@@ -152,23 +200,6 @@ public class OrderServiceImpl implements OrderService {
 		}
 
 		return userRepository.findByEmail(email).orElseThrow(() -> new OrderException(AppConstants.USER_NOT_FOUND));
-	}
-
-	private void reduceStock(Product product, int quantity) {
-		product.setStockQuantity(product.getStockQuantity() - quantity);
-		productRepository.save(product);
-	}
-
-	private void saveOrderItem(Order order, Cart cart, Product product) {
-
-		OrderItem item = new OrderItem();
-		item.setOrder(order);
-		item.setProduct(product);
-		item.setProductName(product.getName());
-		item.setQuantity(cart.getQuantity());
-		item.setPrice(product.getPrice());
-
-		orderItemRepository.save(item);
 	}
 
 	private Order createOrder(User user, String shippingAddress) {

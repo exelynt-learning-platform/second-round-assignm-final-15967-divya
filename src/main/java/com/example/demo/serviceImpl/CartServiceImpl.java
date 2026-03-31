@@ -9,6 +9,7 @@ import com.example.demo.Entity.Cart;
 import com.example.demo.Entity.Product;
 import com.example.demo.Entity.User;
 import com.example.demo.config.CartConfig;
+import com.example.demo.config.ValidationConfig;
 import com.example.demo.constants.AppConstants;
 import com.example.demo.exception.CartException;
 import com.example.demo.repository.CartRepository;
@@ -33,7 +34,7 @@ public class CartServiceImpl implements CartService {
 	private ProductValidationService productValidationService;
 
 	@Autowired
-	private CartConfig cartConfig;
+	private ValidationConfig validationConfig;
 
 	@Override
 	public Cart addToCart(String email, Integer productId, int quantity) {
@@ -64,9 +65,6 @@ public class CartServiceImpl implements CartService {
 		validateStock(product, quantity);
 
 		Cart cart = findCartByUserAndProductOrThrow(user, product);
-		if (cart == null) {
-			throw new CartException(AppConstants.CART_NOT_FOUND);
-		}
 
 		return updateExistingCart(cart, product, quantity);
 	}
@@ -80,25 +78,26 @@ public class CartServiceImpl implements CartService {
 	@Override
 	public boolean removeFromCart(String email, Integer productId) {
 
-	    User user = getUserByEmail(email);
-	    Product product = getProductById(productId);
+		User user = getUserByEmail(email);
+		Product product = getProductById(productId);
 
-	    Cart cart = findCartByUserAndProductOrThrow(user, product); // will throw if not found
-
-	    cartRepository.delete(cart);
-	    return true;
+		Cart cart = cartRepository.findByUserAndProduct(user, product);
+		if (cart == null)
+			throw new CartException(AppConstants.PRODUCT_NOT_FOUND_IN_CART);
+		cartRepository.delete(cart);
+		return true;
 	}
 
 	// ================= COMMON VALIDATION =================
 
 	private void validateQuantity(int quantity) {
 
-		if (quantity < cartConfig.getMinQuantity()) {
+		if (quantity < validationConfig.getMinQuantity()) {
 			throw new CartException(AppConstants.INVALID_QUANTITY);
 		}
 
-		if (quantity > cartConfig.getMaxQuantity()) {
-			throw new CartException(AppConstants.MAX_QUANTITY_EXCEEDED + cartConfig.getMaxQuantity());
+		if (quantity > validationConfig.getMaxQuantity()) {
+			throw new CartException(AppConstants.MAX_QUANTITY_EXCEEDED + validationConfig.getMaxQuantity());
 		}
 	}
 
@@ -153,15 +152,16 @@ public class CartServiceImpl implements CartService {
 	private User getUserByEmail(String email) {
 		return userRepository.findByEmail(email).orElseThrow(() -> new CartException(AppConstants.USER_NOT_FOUND));
 	}
+
 	private Product getProductById(Integer productId) {
 
-	    Product product = productRepository.findById(productId)
-	            .orElseThrow(() -> new CartException(AppConstants.PRODUCT_NOT_FOUND + productId));
+		Product product = productRepository.findById(productId)
+				.orElseThrow(() -> new CartException(AppConstants.PRODUCT_NOT_FOUND + productId));
 
-	    if (product.isDeleted()) {
-	        throw new CartException(AppConstants.PRODUCT_NOT_FOUND_IN_CART);
-	    }
+		if (product.isDeleted()) {
+			throw new CartException(AppConstants.PRODUCT_NOT_FOUND_IN_CART);
+		}
 
-	    return product;
+		return product;
 	}
 }

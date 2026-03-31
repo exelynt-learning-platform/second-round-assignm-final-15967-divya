@@ -18,95 +18,116 @@ import jakarta.annotation.PostConstruct;
 
 @Component
 public class JwtUtil {
+	private static final int MIN_HS256_KEY_BYTES = 32;
 
-	@Value("${jwt.secret}")
-	private String SECRET;
+    @Value("${jwt.secret}")
+    private String SECRET;
 
-	@Value("${jwt.expiration}")
-	private long jwtExpiration;
+    @Value("${jwt.expiration}")
+    private long jwtExpiration;
 
-	@Value("${jwt.secret.min-bytes}")
-	private int minBytes;
+    @Value("${jwt.secret.min-bytes}")
+    private int minBytes;
 
-	@Value("${jwt.secret.max-bytes}")
-	private int maxBytes;
+    @Value("${jwt.secret.max-bytes}")
+    private int maxBytes;
 
-	@Value("${jwt.secret.key-size}")
-	private int keySize;
+    @Value("${jwt.secret.key-size}")
+    private int keySize;
 
-	private SecretKey key;
+    private SecretKey key;
+    private byte[] decodedSecret;
 
-	@PostConstruct
-	public void init() {
+    @PostConstruct
+    public void init() {
 
-		validateSecret(SECRET);
+        validateSecret(SECRET);
 
-		this.key = Keys.hmacShaKeyFor(Base64.getDecoder().decode(SECRET));
-	}
+        this.decodedSecret = Base64.getDecoder().decode(SECRET);
+        this.key = Keys.hmacShaKeyFor(decodedSecret);
+    }
 
-	private void validateSecret(String secret) {
+    private void validateSecret(String secret) {
 
-		if (secret == null || secret.isBlank()) {
-			throw new IllegalStateException("JWT secret is missing");
-		}
+        if (secret == null || secret.isBlank()) {
+            throw new IllegalStateException("JWT secret is missing");
+        }
 
-		byte[] decoded;
-		try {
-			decoded = Base64.getDecoder().decode(secret);
-		} catch (Exception e) {
-			throw new IllegalStateException("JWT secret must be Base64 encoded");
-		}
+        byte[] decoded;
+        try {
+            decoded = Base64.getDecoder().decode(secret);
+        } catch (Exception e) {
+            throw new IllegalStateException("JWT secret must be Base64 encoded");
+        }
 
-		if (decoded.length < minBytes) {
-			throw new IllegalStateException(
-					String.format("JWT secret must be at least %d bits (%d bytes)", minBytes * 8, minBytes));
-		}
+        if (decoded.length < minBytes) {
+            throw new IllegalStateException(
+                String.format("JWT secret must be at least %d bits (%d bytes)", 
+                minBytes * 8, minBytes)
+            );
+        }
 
-		if (decoded.length > maxBytes) {
-			throw new IllegalStateException(
-					String.format("JWT secret must not exceed %d bits (%d bytes)", maxBytes * 8, maxBytes));
-		}
+        if (decoded.length > maxBytes) {
+            throw new IllegalStateException(
+                String.format("JWT secret must not exceed %d bits (%d bytes)", 
+                maxBytes * 8, maxBytes)
+            );
+        }
 
-	}
+        // 🔐 HS256 security enforcement
+        if (decoded.length < MIN_HS256_KEY_BYTES) {
+            throw new IllegalStateException(
+                "JWT secret must be at least 256 bits (32 bytes) for HS256"
+            );
+        }
+    }
 
-	public String generateToken(String email, String role) {
-		return Jwts.builder().setSubject(email).claim("role", role).setIssuedAt(new Date())
-				.setExpiration(new Date(System.currentTimeMillis() + jwtExpiration))
-				.signWith(key, SignatureAlgorithm.HS256).compact();
-	}
+    public String generateToken(String email, String role) {
+        return Jwts.builder()
+                .setSubject(email)
+                .claim("role", role)
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + jwtExpiration))
+                .signWith(key, SignatureAlgorithm.HS256)
+                .compact();
+    }
 
-	public String extractEmail(String token) {
-		return getClaims(token).getSubject();
-	}
+    public String extractEmail(String token) {
+        return getClaims(token).getSubject();
+    }
 
-	public String extractRole(String token) {
-		return getClaims(token).get("role", String.class);
-	}
+    public String extractRole(String token) {
+        return getClaims(token).get("role", String.class);
+    }
 
-	public boolean validateToken(String token) {
-		try {
-			getClaims(token);
-			return true;
-		} catch (JwtException | IllegalArgumentException e) {
-			return false;
-		}
-	}
+    public boolean validateToken(String token) {
+        try {
+            getClaims(token);
+            return true;
+        } catch (JwtException | IllegalArgumentException e) {
+            return false;
+        }
+    }
 
-	private Claims getClaims(String token) {
-		return Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody();
-	}
+    private Claims getClaims(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+    }
 
-	// 🔥 OPTIONAL: Use ONCE to generate strong secret
-	public static String generateStrongSecret(int keySize) {
-		try {
-			KeyGenerator keyGen = KeyGenerator.getInstance("HmacSHA256");
-			keyGen.init(keySize);
+    // 🔥 OPTIONAL: Generate strong Base64 secret
+    public static String generateStrongSecret(int keySize) {
+        try {
+            KeyGenerator keyGen = KeyGenerator.getInstance("HmacSHA256");
+            keyGen.init(keySize);
 
-			SecretKey secretKey = keyGen.generateKey();
-			return Base64.getEncoder().encodeToString(secretKey.getEncoded());
+            SecretKey secretKey = keyGen.generateKey();
+            return Base64.getEncoder().encodeToString(secretKey.getEncoded());
 
-		} catch (Exception e) {
-			throw new RuntimeException("Error generating JWT secret", e);
-		}
-	}
+        } catch (Exception e) {
+            throw new RuntimeException("Error generating JWT secret", e);
+        }
+    }
 }

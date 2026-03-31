@@ -50,12 +50,10 @@ public class CartController {
 	}
 
 	@DeleteMapping("/{productId}")
-	public ResponseEntity<String> remove(@PathVariable Integer productId) {
+	public ResponseEntity<Void> remove(@PathVariable Integer productId) {
 
-		boolean isRemoved = cartService.removeFromCart(SecurityUtil.getCurrentUserEmail(), productId);
+	    cartService.removeFromCart(SecurityUtil.getCurrentUserEmail(), productId);
 
-		return isRemoved ? ResponseEntity.ok(AppConstants.CART_REMOVED_SUCCESS)
-				: ResponseEntity.status(HttpStatus.NOT_FOUND).body(AppConstants.PRODUCT_NOT_FOUND_IN_CART);
-
+	    return ResponseEntity.noContent().build();
 	}
 }

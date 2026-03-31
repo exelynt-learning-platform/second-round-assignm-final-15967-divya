@@ -4,7 +4,6 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -13,7 +12,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.demo.Entity.Order;
-import com.example.demo.constants.AppConstants;
 import com.example.demo.security.SecurityUtil;
 import com.example.demo.service.OrderService;
 
@@ -37,23 +35,15 @@ public class OrderController {
 		return orderService.getMyOrders(SecurityUtil.getCurrentUserEmail());
 	}
 
-
 	@GetMapping("/all")
-	public ResponseEntity<?> allOrders(
-	        @RequestParam(defaultValue = "0") int page,
-	        @RequestParam(defaultValue = "10") int size,
-	        @RequestParam(defaultValue = "id") String sortBy,
-	        @RequestParam(defaultValue = "desc") String sortDir) {
+	public ResponseEntity<Page<Order>> allOrders(@RequestParam(defaultValue = "0") int page,
+			@RequestParam(defaultValue = "10") int size, @RequestParam(defaultValue = "id") String sortBy,
+			@RequestParam(defaultValue = "desc") String sortDir) {
 
-	    log.info("Fetching all orders with pagination");
+		log.info("Fetching all orders with pagination");
 
-	    Page<Order> orders = orderService.getAllOrders(page, size, sortBy, sortDir);
+		Page<Order> orders = orderService.getAllOrders(page, size, sortBy, sortDir);
 
-	    if (orders.isEmpty()) {
-	        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-	                .body(AppConstants.NO_ORDERS_FOUND);
-	    }
-
-	    return ResponseEntity.ok(orders);
+		return ResponseEntity.ok(orders);
 	}
 }

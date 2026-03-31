@@ -1,7 +1,5 @@
 package com.example.demo.controller;
 
-import java.security.Principal;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
@@ -39,9 +37,8 @@ public class ProductController {
 	private CartConfig cartConfig;
 
 	@PostMapping
-	public ResponseEntity<Product> create(@Valid @RequestBody ProductRequestDTO request, Principal principal) {
-
-		return ResponseEntity.ok(productService.create(request, principal.getName()));
+	public ResponseEntity<Product> create(@Valid @RequestBody ProductRequestDTO request) {
+		return ResponseEntity.ok(productService.create(request));
 	}
 
 	@GetMapping
@@ -51,7 +48,7 @@ public class ProductController {
 
 		String email = SecurityUtil.getCurrentUserEmail();
 
-	    Page<Product> products = productService.getProductsByOwner(page, size, sortBy, sortDir);
+		Page<Product> products = productService.getProductsByOwner(page, size, sortBy, sortDir);
 
 		return ResponseEntity.ok(products);
 	}

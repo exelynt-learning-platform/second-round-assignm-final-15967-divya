@@ -47,7 +47,8 @@ public class ProductServiceImpl implements ProductService {
 	@Override
 	@CacheEvict(value = "productsCache", allEntries = true)
 	@Transactional(isolation = Isolation.READ_COMMITTED)
-	public Product create(ProductRequestDTO dto, String email) {
+	public Product create(ProductRequestDTO dto) {
+		String email = SecurityUtil.getCurrentUserEmail();
 
 		User user = userRepository.findByEmail(email)
 				.orElseThrow(() -> new ProductException(AppConstants.USER_NOT_FOUND));
@@ -149,6 +150,9 @@ public class ProductServiceImpl implements ProductService {
 
 	private void validateProductOwnership(Product product, User currentUser) {
 
+		if (product == null || product.getUser() == null) {
+			throw new ProductException(AppConstants.UNAUTHORIZED_PRODUCT_ACCESS);
+		}
 		if (!Objects.equals(product.getUser().getId(), currentUser.getId())) {
 			throw new ProductException(AppConstants.UNAUTHORIZED_PRODUCT_ACCESS);
 		}

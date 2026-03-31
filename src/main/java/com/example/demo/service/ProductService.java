@@ -6,7 +6,7 @@ import com.example.demo.DTO.ProductRequestDTO;
 import com.example.demo.Entity.Product;
 public interface ProductService {
 
-    Product create(ProductRequestDTO dto, String email);
+    Product create(ProductRequestDTO dto);
 
     Page<Product> getProductsByOwner(int page, int size, String sortBy, String sortDir);
 

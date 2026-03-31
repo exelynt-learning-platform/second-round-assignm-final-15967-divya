@@ -32,7 +32,12 @@ public class AuthController {
 
 	@PostMapping("/register")
 	public ResponseEntity<String> register(@Valid @RequestBody RegisterRequest request) {
-		if (!List.of("ROLE_USER", "ROLE_ADMIN").contains(request.getRole())) {
+
+		Role roleEnum;
+
+		try {
+			roleEnum = request.getRole() != null ? Role.valueOf(request.getRole()) : Role.ROLE_USER;
+		} catch (IllegalArgumentException e) {
 			throw new IllegalArgumentException("Invalid role");
 		}
 
@@ -40,7 +45,8 @@ public class AuthController {
 		user.setName(request.getName());
 		user.setEmail(request.getEmail());
 		user.setPassword(request.getPassword());
-		 user.setRole(request.getRole() != null ? request.getRole() : Role.ROLE_USER.name());
+		user.setRole(roleEnum.name());
+
 		userService.register(user);
 
 		return ResponseEntity.ok(AppConstants.USER_REGISTERED_SUCCESS);
