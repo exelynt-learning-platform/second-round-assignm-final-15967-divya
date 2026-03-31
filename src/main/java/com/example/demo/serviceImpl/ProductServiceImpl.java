@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.example.demo.DTO.ProductRequestDTO;
 import com.example.demo.Entity.Product;
 import com.example.demo.Entity.User;
+import com.example.demo.common.PaginationUtil;
 import com.example.demo.config.CartConfig;
 import com.example.demo.constants.AppConstants;
 import com.example.demo.enums.ProductSortField;
@@ -65,19 +66,24 @@ public class ProductServiceImpl implements ProductService {
 		}
 	}
 
-	@Override
-	@Cacheable(value = "productsCache", key = "{#email, #page, #size,#sortBy,  #sortDir}")
+	@Cacheable(value = "productsCache", key = "{#email, #page, #size, #sortBy, #sortDir}")
 	public Page<Product> getProductsByOwner(String email, int page, int size, String sortBy, String sortDir) {
-		Pageable pageable = createPageable(page, size, sortBy, sortDir);
+
+		Pageable pageable = PaginationUtil.createPageable(
+		        page,
+		        size,
+		        sortBy,
+		        sortDir,
+		        cartConfig.getDefaultPage(),
+		        cartConfig.getDefaultSize(),
+		        ProductSortField::from
+		);
 		User user = userRepository.findByEmail(email)
 				.orElseThrow(() -> new ProductException(AppConstants.USER_NOT_FOUND));
 
 		Page<Product> products = productRepository.findByUser(user, pageable);
 
-		if (products.isEmpty()) {
-			throw new ProductException(AppConstants.NO_PRODUCTS_FOUND);
-		}
-
+	
 		return products;
 	}
 
@@ -112,6 +118,8 @@ public class ProductServiceImpl implements ProductService {
 		existingProduct.setName(updatedProduct.getName());
 		existingProduct.setPrice(updatedProduct.getPrice());
 		existingProduct.setDescription(updatedProduct.getDescription());
+		existingProduct.setStockQuantity(updatedProduct.getStockQuantity());
+		existingProduct.setImageUrl(updatedProduct.getImageUrl());
 
 		return productRepository.save(existingProduct);
 	}
@@ -150,8 +158,15 @@ public class ProductServiceImpl implements ProductService {
 
 	public Page<Product> getAllProducts(int page, int size, String sortBy, String sortDir) {
 
-		Pageable pageable = createPageable(page, size, sortBy, sortDir);
-
+		Pageable pageable = PaginationUtil.createPageable(
+		        page,
+		        size,
+		        sortBy,
+		        sortDir,
+		        cartConfig.getDefaultPage(),
+		        cartConfig.getDefaultSize(),
+		        ProductSortField::from
+		);
 		Page<Product> products = productRepository.findByIsDeleted(false, pageable);
 
 		if (products.isEmpty()) {
@@ -200,23 +215,5 @@ public class ProductServiceImpl implements ProductService {
 		return product;
 	}
 
-	private Pageable createPageable(int page, int size, String sortBy, String sortDir) {
-
-		int defaultPage = cartConfig.getDefaultPage();
-		int defaultSize = cartConfig.getDefaultSize();
-
-		int finalPage = (page < 0) ? defaultPage : page;
-		int finalSize = (size <= 0) ? defaultSize : size;
-
-		String validSortBy = ProductSortField.from(sortBy);
-
-		Sort.Direction direction;
-		try {
-			direction = Sort.Direction.fromString(sortDir);
-		} catch (Exception e) {
-			direction = Sort.Direction.DESC; // default fallback
-		}
-
-		return PageRequest.of(finalPage, finalSize, Sort.by(direction, validSortBy));
-	}
+	
 }

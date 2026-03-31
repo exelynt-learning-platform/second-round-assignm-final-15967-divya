@@ -21,6 +21,7 @@ import lombok.Setter;
 
 @Entity
 @Table(name = "products", uniqueConstraints = { @UniqueConstraint(columnNames = { "name", "user_id" }) })
+//Suppressed due to STS false-positive warning on Hibernate SQL inspection in entity mapping
 @SuppressWarnings("HibernateSQLQueryInspection")
 @SQLDelete(sql = "UPDATE products SET is_deleted = true WHERE id = ?")
 @Getter

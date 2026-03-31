@@ -63,7 +63,7 @@ public class CartServiceImpl implements CartService {
 		validateQuantity(quantity);
 		validateStock(product, quantity);
 
-		Cart cart = getCartByUserAndProduct(user, product);
+		Cart cart = findCartByUserAndProductOrThrow(user, product);
 		if (cart == null) {
 			throw new CartException(AppConstants.CART_NOT_FOUND);
 		}
@@ -83,7 +83,7 @@ public class CartServiceImpl implements CartService {
 	    User user = getUserByEmail(email);
 	    Product product = getProductById(productId);
 
-	    Cart cart = getCartByUserAndProduct(user, product); // will throw if not found
+	    Cart cart = findCartByUserAndProductOrThrow(user, product); // will throw if not found
 
 	    cartRepository.delete(cart);
 	    return true;
@@ -106,7 +106,7 @@ public class CartServiceImpl implements CartService {
 		productValidationService.validateStock(product, quantity);
 	}
 
-	private Cart getCartByUserAndProduct(User user, Product product) {
+	private Cart findCartByUserAndProductOrThrow(User user, Product product) {
 		Cart cart = cartRepository.findByUserAndProduct(user, product);
 
 		if (cart == null) {

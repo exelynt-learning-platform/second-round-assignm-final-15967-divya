@@ -40,8 +40,7 @@ public class AuthController {
 		user.setName(request.getName());
 		user.setEmail(request.getEmail());
 		user.setPassword(request.getPassword());
-		user.setRole(Role.ROLE_USER.name());
-
+		 user.setRole(request.getRole() != null ? request.getRole() : Role.ROLE_USER.name());
 		userService.register(user);
 
 		return ResponseEntity.ok(AppConstants.USER_REGISTERED_SUCCESS);

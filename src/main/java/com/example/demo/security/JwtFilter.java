@@ -19,51 +19,40 @@ import jakarta.servlet.http.HttpServletResponse;
 @Component
 public class JwtFilter extends OncePerRequestFilter {
 
-    @Autowired
-    private JwtUtil jwtUtil;
+	@Autowired
+	private JwtUtil jwtUtil;
 
-    @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                   HttpServletResponse response,
-                                   FilterChain filterChain)
-            throws ServletException, IOException {
+	@Override
+	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+			throws ServletException, IOException {
 
-        String authHeader = request.getHeader("Authorization");
+		String authHeader = request.getHeader("Authorization");
 
-        String token = null;
-        String email = null;
-        String role = null;
+		String token = null;
+		String email = null;
+		String role = null;
 
-        // Extract token
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            token = authHeader.substring(7);
+		if (authHeader != null && authHeader.startsWith("Bearer ")) {
+			token = authHeader.substring(7);
 
-            if (jwtUtil.validateToken(token)) {
-                email = jwtUtil.extractEmail(token);
-                role = jwtUtil.extractRole(token);
-            }
-        }
+			if (jwtUtil.validateToken(token)) {
+				email = jwtUtil.extractEmail(token);
+				role = jwtUtil.extractRole(token);
+			}
+		}
 
-        // 🔥 CHANGE: safer role validation
-        if (email != null && role != null &&
-                SecurityContextHolder.getContext().getAuthentication() == null) {
+		if (email != null && role != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
-            SimpleGrantedAuthority authority = new SimpleGrantedAuthority(role);
+			SimpleGrantedAuthority authority = new SimpleGrantedAuthority(role);
 
-            UsernamePasswordAuthenticationToken authToken =
-                    new UsernamePasswordAuthenticationToken(
-                            email,
-                            null,
-                            List.of(authority)
-                    );
+			UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(email, null,
+					List.of(authority));
 
-            authToken.setDetails(
-                    new WebAuthenticationDetailsSource().buildDetails(request)
-            );
+			authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-            SecurityContextHolder.getContext().setAuthentication(authToken);
-        }
+			SecurityContextHolder.getContext().setAuthentication(authToken);
+		}
 
-        filterChain.doFilter(request, response);
-    }
+		filterChain.doFilter(request, response);
+	}
 }

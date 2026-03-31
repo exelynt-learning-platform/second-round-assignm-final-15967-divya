@@ -1,6 +1,7 @@
 package com.example.demo.service;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import com.example.demo.DTO.ProductRequestDTO;
 import com.example.demo.Entity.Product;
@@ -8,7 +9,8 @@ import com.example.demo.Entity.Product;
 public interface ProductService {
 
 	public Product create(ProductRequestDTO dto, String email);
-	Page<Product> getProductsByOwner(String email, int page, int size,String sortBy,String sortDir);
+
+	Page<Product> getProductsByOwner(String email, int page, int size, String sortBy, String sortDir);
 
 	Product getById(int id);
 
@@ -17,4 +19,4 @@ public interface ProductService {
 	boolean delete(Integer id);
 
 	public Page<Product> getAllProducts(int page, int size, String sortBy, String sortDir);
-	}
+}

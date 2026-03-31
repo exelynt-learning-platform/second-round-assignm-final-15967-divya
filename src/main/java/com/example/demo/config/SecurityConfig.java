@@ -17,7 +17,6 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import com.example.demo.enums.Role;
 import com.example.demo.exception.CustomAccessDeniedHandler;
 import com.example.demo.exception.CustomAuthenticationEntryPoint;
 import com.example.demo.security.JwtFilter;
@@ -49,17 +48,15 @@ public class SecurityConfig {
 				.exceptionHandling(ex -> ex.accessDeniedHandler(accessDeniedHandler)
 						.authenticationEntryPoint(authenticationEntryPoint))
 				.authorizeHttpRequests(auth -> auth.requestMatchers("/auth/**").permitAll().requestMatchers("/cart/**")
-						.hasAuthority(Authorities.USER).requestMatchers("/orders/place")
-						.hasAuthority(Authorities.USER).requestMatchers("/orders/my")
-						.hasAuthority(Authorities.USER).requestMatchers("/payment/**")
-						.hasAuthority(Authorities.USER).requestMatchers("/products/getAllproducts")
-						.hasAuthority(Authorities.ADMIN).requestMatchers("/products/**")
-						.hasAuthority(Authorities.ADMIN).requestMatchers("/orders/all")
+						.hasAuthority(Authorities.USER).requestMatchers("/orders/**").hasAuthority(Authorities.USER)
+						.requestMatchers("/payment/**").hasAuthority(Authorities.USER)
+						.requestMatchers("/products/getAllproducts").hasAuthority(Authorities.ADMIN)
+						.requestMatchers("/products/**").hasAuthority(Authorities.ADMIN).requestMatchers("/orders/all")
 						.hasAuthority(Authorities.ADMIN).anyRequest().authenticated())
 				.sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
-		http.addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class);
-		http.addFilterAfter(jwtFilter, RateLimitFilter.class);
+		http.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+		http.addFilterAfter(rateLimitFilter, JwtFilter.class);
 
 		return http.build();
 	}

@@ -50,20 +50,19 @@ public class ProductController {
 
 	// ✅ GET PRODUCTS BY OWNER (PAGINATED)
 	@GetMapping
-	public ResponseEntity<Page<Product>> getProductsByOwner(@RequestParam(required = false) Integer page,
-			@RequestParam(required = false) Integer size,
-			 @RequestParam(defaultValue = "id") String sortBy,
-			 @RequestParam(defaultValue = "asc") String sortDir) {
+	public ResponseEntity<Page<Product>> getProductsByOwner(
+	        @RequestParam(defaultValue = "0") int page,
+	        @RequestParam(defaultValue = "10") int size,
+	        @RequestParam(defaultValue = "id") String sortBy,
+	        @RequestParam(defaultValue = "asc") String sortDir,
+	        Principal principal) {
 
-		String email = SecurityUtil.getCurrentUserEmail();
-		int finalPage = (page != null) ? page : cartConfig.getDefaultPage();
-		int finalSize = (size != null) ? size : cartConfig.getDefaultSize();
+	    String email = principal.getName();
 
-		log.info("Fetching products for user: {}", email);
+	    Page<Product> products =
+	            productService.getProductsByOwner(email, page, size, sortBy, sortDir);
 
-	    Page<Product> products = productService.getProductsByOwner(email, finalPage, finalSize,sortBy,sortDir);
-
-		return ResponseEntity.ok(products);
+	    return ResponseEntity.ok(products);
 	}
 
 	// ✅ GET PRODUCT BY ID
@@ -104,14 +103,16 @@ public class ProductController {
 		        : ResponseEntity.status(HttpStatus.NOT_FOUND).body(AppConstants.PRODUCT_NOT_FOUND);
 	}	
 	
-	@GetMapping("/getAllproducts")
-	public ResponseEntity<?> getAllProducts(
-	        @RequestParam(name = "page", defaultValue = "0") int page,
-	        @RequestParam(name = "size", defaultValue = "10") int size,
-	        @RequestParam(name = "sortBy", defaultValue = "id") String sortBy,
-	        @RequestParam(name = "sortDir", defaultValue = "desc") String sortDir) {
+	@GetMapping("/all")
+	public ResponseEntity<Page<Product>> getAllProducts(
+	        @RequestParam(defaultValue = "0") int page,
+	        @RequestParam(defaultValue = "10") int size,
+	        @RequestParam(defaultValue = "id") String sortBy,
+	        @RequestParam(defaultValue = "asc") String sortDir) {
 
-	    Page<Product> products = productService.getAllProducts(page, size, sortBy, sortDir);
+	    Page<Product> products =
+	            productService.getAllProducts(page, size, sortBy, sortDir);
+
 	    return ResponseEntity.ok(products);
 	}
 	

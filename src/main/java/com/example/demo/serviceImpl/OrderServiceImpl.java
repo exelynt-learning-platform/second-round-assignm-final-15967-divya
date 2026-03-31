@@ -6,9 +6,7 @@ import java.util.Objects;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import com.example.demo.Entity.Cart;
@@ -16,8 +14,10 @@ import com.example.demo.Entity.Order;
 import com.example.demo.Entity.OrderItem;
 import com.example.demo.Entity.Product;
 import com.example.demo.Entity.User;
+import com.example.demo.common.PaginationUtil;
 import com.example.demo.config.CartConfig;
 import com.example.demo.constants.AppConstants;
+import com.example.demo.enums.OrderSortField;
 import com.example.demo.enums.PaymentStatus;
 import com.example.demo.exception.OrderException;
 import com.example.demo.repository.CartRepository;
@@ -91,8 +91,8 @@ public class OrderServiceImpl implements OrderService {
 	@Override
 	public Page<Order> getAllOrders(int page, int size, String sortBy, String sortDir) {
 
-		Pageable pageable = createPageable(page, size, sortBy, sortDir);
-
+		Pageable pageable = PaginationUtil.createPageable(page, size, sortBy, sortDir, cartConfig.getDefaultPage(),
+				cartConfig.getDefaultSize(), OrderSortField::from);
 		Page<Order> orders = orderRepository.findAll(pageable);
 
 		return orders;
@@ -183,21 +183,4 @@ public class OrderServiceImpl implements OrderService {
 		return order;
 	}
 
-	private Pageable createPageable(int page, int size, String sortBy, String sortDir) {
-
-		int defaultPage = cartConfig.getDefaultPage();
-		int defaultSize = cartConfig.getDefaultSize();
-
-		int finalPage = (page < 0) ? defaultPage : page;
-		int finalSize = (size <= 0) ? defaultSize : size;
-
-		Sort.Direction direction;
-		try {
-			direction = Sort.Direction.fromString(sortDir);
-		} catch (Exception e) {
-			direction = Sort.Direction.DESC;
-		}
-
-		return PageRequest.of(finalPage, finalSize, Sort.by(direction, sortBy));
-	}
 }
