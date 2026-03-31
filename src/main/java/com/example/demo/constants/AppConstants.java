@@ -9,6 +9,8 @@ public final class AppConstants {
 	public static final String INSUFFICIENT_STOCK = "Insufficient stock for product: ";
 	public static final String NO_PRODUCTS_FOUND = "No products found for this user";
 	public static final String PRODUCT_DELETED = "Product deleted successfully";
+	public static final String PRODUCT_ALREADY_DELETED = "Product was deleted";
+
 	public static final String UNAUTHORIZED_PRODUCT_ACCESS = "Unauthorized cart access detected";
 	public static final String CART_NOT_FOUND = "Cart item not found";
 	public static final String MAX_CART_QUANTITY_EXCEEDED = "Maximum allowed quantity per product is ";

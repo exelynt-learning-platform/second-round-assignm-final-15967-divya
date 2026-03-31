@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -20,7 +21,6 @@ import com.example.demo.DTO.ProductRequestDTO;
 import com.example.demo.Entity.Product;
 import com.example.demo.config.CartConfig;
 import com.example.demo.constants.AppConstants;
-import com.example.demo.exception.ProductNotFoundException;
 import com.example.demo.security.SecurityUtil;
 import com.example.demo.service.ProductService;
 
@@ -29,6 +29,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @RestController
+@PreAuthorize("hasRole('ADMIN')")
 @RequestMapping("/products")
 public class ProductController {
 
@@ -37,32 +38,22 @@ public class ProductController {
 	@Autowired
 	private CartConfig cartConfig;
 
-	// ✅ CREATE PRODUCT
 	@PostMapping
-	public ResponseEntity<Product> create(
-	        @Valid @RequestBody ProductRequestDTO request,
-	        Principal principal) {
+	public ResponseEntity<Product> create(@Valid @RequestBody ProductRequestDTO request, Principal principal) {
 
-	    return ResponseEntity.ok(
-	        productService.create(request, principal.getName())
-	    );
+		return ResponseEntity.ok(productService.create(request, principal.getName()));
 	}
 
-	// ✅ GET PRODUCTS BY OWNER (PAGINATED)
 	@GetMapping
-	public ResponseEntity<Page<Product>> getProductsByOwner(
-	        @RequestParam(defaultValue = "0") int page,
-	        @RequestParam(defaultValue = "10") int size,
-	        @RequestParam(defaultValue = "id") String sortBy,
-	        @RequestParam(defaultValue = "asc") String sortDir,
-	        Principal principal) {
+	public ResponseEntity<Page<Product>> getProductsByOwner(@RequestParam(defaultValue = "0") int page,
+			@RequestParam(defaultValue = "10") int size, @RequestParam(defaultValue = "id") String sortBy,
+			@RequestParam(defaultValue = "asc") String sortDir) {
 
-	    String email = principal.getName();
+		String email = SecurityUtil.getCurrentUserEmail();
 
-	    Page<Product> products =
-	            productService.getProductsByOwner(email, page, size, sortBy, sortDir);
+	    Page<Product> products = productService.getProductsByOwner(page, size, sortBy, sortDir);
 
-	    return ResponseEntity.ok(products);
+		return ResponseEntity.ok(products);
 	}
 
 	// ✅ GET PRODUCT BY ID
@@ -76,7 +67,6 @@ public class ProductController {
 		return ResponseEntity.ok(product);
 	}
 
-	// ✅ UPDATE PRODUCT (WITH OWNERSHIP CHECK)
 	@PutMapping("/{id}")
 	public ResponseEntity<Product> update(@PathVariable("id") Integer id, @Valid @RequestBody Product product) {
 
@@ -89,32 +79,24 @@ public class ProductController {
 		return ResponseEntity.ok(updatedProduct);
 	}
 
-	// ✅ DELETE PRODUCT (WITH OWNERSHIP CHECK)
-
-	// ✅ DELETE
 	@DeleteMapping("/{id}")
 	public ResponseEntity<?> delete(@PathVariable("id") Integer id) {
 
 		log.info("Deleting product id: {}", id);
 
 		boolean delete = productService.delete(id);
-		return delete
-		        ? ResponseEntity.status(HttpStatus.ACCEPTED).body(AppConstants.PRODUCT_DELETED)
-		        : ResponseEntity.status(HttpStatus.NOT_FOUND).body(AppConstants.PRODUCT_NOT_FOUND);
-	}	
-	
-	@GetMapping("/all")
-	public ResponseEntity<Page<Product>> getAllProducts(
-	        @RequestParam(defaultValue = "0") int page,
-	        @RequestParam(defaultValue = "10") int size,
-	        @RequestParam(defaultValue = "id") String sortBy,
-	        @RequestParam(defaultValue = "asc") String sortDir) {
-
-	    Page<Product> products =
-	            productService.getAllProducts(page, size, sortBy, sortDir);
-
-	    return ResponseEntity.ok(products);
+		return delete ? ResponseEntity.status(HttpStatus.ACCEPTED).body(AppConstants.PRODUCT_DELETED)
+				: ResponseEntity.status(HttpStatus.NOT_FOUND).body(AppConstants.PRODUCT_NOT_FOUND);
 	}
-	
+
+	@GetMapping("/all")
+	public ResponseEntity<Page<Product>> getAllProducts(@RequestParam(defaultValue = "0") int page,
+			@RequestParam(defaultValue = "10") int size, @RequestParam(defaultValue = "id") String sortBy,
+			@RequestParam(defaultValue = "asc") String sortDir) {
+
+		Page<Product> products = productService.getAllProducts(page, size, sortBy, sortDir);
+
+		return ResponseEntity.ok(products);
+	}
 
 }

@@ -7,9 +7,7 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,10 +16,12 @@ import com.example.demo.DTO.ProductRequestDTO;
 import com.example.demo.Entity.Product;
 import com.example.demo.Entity.User;
 import com.example.demo.common.PaginationUtil;
-import com.example.demo.config.CartConfig;
+import com.example.demo.config.PaginationConfig;
+import com.example.demo.config.ValidationConfig;
 import com.example.demo.constants.AppConstants;
 import com.example.demo.enums.ProductSortField;
 import com.example.demo.exception.ProductException;
+import com.example.demo.exception.ProductNotFoundException;
 import com.example.demo.repository.ProductRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.security.SecurityUtil;
@@ -40,11 +40,13 @@ public class ProductServiceImpl implements ProductService {
 	private UserRepository userRepository;
 
 	@Autowired
-	private CartConfig cartConfig;
+	private PaginationConfig paginationConfig;
+	@Autowired
+	private ValidationConfig validationConfig;
 
 	@Override
 	@CacheEvict(value = "productsCache", allEntries = true)
-	@Transactional(isolation = Isolation.SERIALIZABLE)
+	@Transactional(isolation = Isolation.READ_COMMITTED)
 	public Product create(ProductRequestDTO dto, String email) {
 
 		User user = userRepository.findByEmail(email)
@@ -66,36 +68,34 @@ public class ProductServiceImpl implements ProductService {
 		}
 	}
 
-	@Cacheable(value = "productsCache", key = "{#email, #page, #size, #sortBy, #sortDir}")
-	public Page<Product> getProductsByOwner(String email, int page, int size, String sortBy, String sortDir) {
+	@Override
+	@Cacheable(value = "productsCache", key = "T(com.example.demo.security.SecurityUtil).getCurrentUserEmail() + '_' + #page + '_' + #size + '_' + #sortBy + '_' + #sortDir")
+	public Page<Product> getProductsByOwner(int page, int size, String sortBy, String sortDir) {
 
-		Pageable pageable = PaginationUtil.createPageable(
-		        page,
-		        size,
-		        sortBy,
-		        sortDir,
-		        cartConfig.getDefaultPage(),
-		        cartConfig.getDefaultSize(),
-		        ProductSortField::from
-		);
+		String email = SecurityUtil.getCurrentUserEmail();
+
 		User user = userRepository.findByEmail(email)
 				.orElseThrow(() -> new ProductException(AppConstants.USER_NOT_FOUND));
 
-		Page<Product> products = productRepository.findByUser(user, pageable);
+		Pageable pageable = PaginationUtil.createPageable(page, size, sortBy, sortDir,
+				paginationConfig.getDefaultPage(), paginationConfig.getDefaultSize(), ProductSortField::from);
 
-	
-		return products;
+		return productRepository.findByUser(user, pageable);
 	}
 
 	@Override
 	public Product getById(int id) {
-		return productRepository.findById(id)
+		Product product = productRepository.findById(id)
 				.orElseThrow(() -> new ProductException(AppConstants.PRODUCT_NOT_FOUND + id));
+		if (product.isDeleted()) {
+			throw new ProductNotFoundException(AppConstants.PRODUCT_ALREADY_DELETED);
+		}
+		return product;
 	}
 
 	@Override
 	@CacheEvict(value = "productsCache", allEntries = true)
-	public Product update(Integer id, Product updatedProduct) {
+	public Product update(Integer id, Product product) {
 
 		String email = SecurityUtil.getCurrentUserEmail();
 
@@ -107,23 +107,25 @@ public class ProductServiceImpl implements ProductService {
 
 		validateProductOwnership(existingProduct, currentUser);
 
-		boolean exists = productRepository.existsByNameAndUserAndIdNotAndIsDeletedFalse(updatedProduct.getName(),
-				currentUser, id);
+		boolean exists = productRepository.existsByNameAndUserAndIdNotAndIsDeletedFalse(product.getName(), currentUser,
+				id);
 
 		if (exists) {
 			throw new ProductException(AppConstants.PRODUCT_ALREADY_EXISTS);
 		}
 
-		validateProductFields(updatedProduct);
-		existingProduct.setName(updatedProduct.getName());
-		existingProduct.setPrice(updatedProduct.getPrice());
-		existingProduct.setDescription(updatedProduct.getDescription());
-		existingProduct.setStockQuantity(updatedProduct.getStockQuantity());
-		existingProduct.setImageUrl(updatedProduct.getImageUrl());
+		validateProductFields(product);
+		existingProduct.setName(product.getName());
+		existingProduct.setPrice(product.getPrice());
+		existingProduct.setDescription(product.getDescription());
+		existingProduct.setStockQuantity(product.getStockQuantity());
+		existingProduct.setImageUrl(product.getImageUrl());
 
 		return productRepository.save(existingProduct);
 	}
 
+	@Override
+	@Transactional
 	@CacheEvict(value = "productsCache", allEntries = true)
 	public boolean delete(Integer id) {
 
@@ -147,31 +149,17 @@ public class ProductServiceImpl implements ProductService {
 
 	private void validateProductOwnership(Product product, User currentUser) {
 
-		if (product == null || product.getUser() == null || currentUser == null) {
-			throw new ProductException(AppConstants.UNAUTHORIZED_PRODUCT_ACCESS);
-		}
-
 		if (!Objects.equals(product.getUser().getId(), currentUser.getId())) {
 			throw new ProductException(AppConstants.UNAUTHORIZED_PRODUCT_ACCESS);
 		}
 	}
 
+	@Override
 	public Page<Product> getAllProducts(int page, int size, String sortBy, String sortDir) {
 
-		Pageable pageable = PaginationUtil.createPageable(
-		        page,
-		        size,
-		        sortBy,
-		        sortDir,
-		        cartConfig.getDefaultPage(),
-		        cartConfig.getDefaultSize(),
-		        ProductSortField::from
-		);
+		Pageable pageable = PaginationUtil.createPageable(page, size, sortBy, sortDir,
+				paginationConfig.getDefaultPage(), paginationConfig.getDefaultSize(), ProductSortField::from);
 		Page<Product> products = productRepository.findByIsDeleted(false, pageable);
-
-		if (products.isEmpty()) {
-			throw new ProductException(AppConstants.NO_PRODUCTS_FOUND);
-		}
 
 		return products;
 	}
@@ -186,19 +174,19 @@ public class ProductServiceImpl implements ProductService {
 		}
 
 		// Min validation
-		if (stock < cartConfig.getMinQuantity()) {
+		if (stock < validationConfig.getMinQuantity()) {
 			throw new ProductException(AppConstants.INVALID_QUANTITY);
 		}
 
 		// Max validation
-		if (stock > cartConfig.getMaxQuantity()) {
-			throw new ProductException(AppConstants.MAX_QUANTITY_EXCEEDED + cartConfig.getMaxQuantity());
+		if (stock > validationConfig.getMaxQuantity()) {
+			throw new ProductException(AppConstants.MAX_QUANTITY_EXCEEDED + validationConfig.getMaxQuantity());
 		}
 
 		// Image URL validation
 		String imageUrl = updatedProduct.getImageUrl();
 
-		if (imageUrl != null && imageUrl.isBlank()) {
+		if (imageUrl != null && imageUrl.trim().isEmpty()) {
 			throw new ProductException(AppConstants.INVALID_PRODUCT);
 		}
 	}
@@ -215,5 +203,4 @@ public class ProductServiceImpl implements ProductService {
 		return product;
 	}
 
-	
 }

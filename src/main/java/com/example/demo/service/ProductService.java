@@ -1,22 +1,20 @@
 package com.example.demo.service;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 
 import com.example.demo.DTO.ProductRequestDTO;
 import com.example.demo.Entity.Product;
-
 public interface ProductService {
 
-	public Product create(ProductRequestDTO dto, String email);
+    Product create(ProductRequestDTO dto, String email);
 
-	Page<Product> getProductsByOwner(String email, int page, int size, String sortBy, String sortDir);
+    Page<Product> getProductsByOwner(int page, int size, String sortBy, String sortDir);
 
-	Product getById(int id);
+    Product getById(int id);
 
-	Product update(Integer id, Product product);
+    Product update(Integer id, Product product);
 
-	boolean delete(Integer id);
+    boolean delete(Integer id);
 
-	public Page<Product> getAllProducts(int page, int size, String sortBy, String sortDir);
+    Page<Product> getAllProducts(int page, int size, String sortBy, String sortDir);
 }
