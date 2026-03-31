@@ -40,16 +40,16 @@ public class ProductServiceImpl implements ProductService {
 	@Transactional(isolation = Isolation.SERIALIZABLE)
 	public Product create(Product product, String email) {
 
-		User user = userRepository.findByEmail(email)
-				.orElseThrow(() -> new RuntimeException(AppConstants.USER_NOT_FOUND));
+	    User user = userRepository.findByEmail(email)
+	            .orElseThrow(() -> new RuntimeException(AppConstants.USER_NOT_FOUND));
 
-		product.setUser(user);
+	    product.setUser(user); // validate before assigning
 
-		try {
-			return productRepository.save(product);
-		} catch (DataIntegrityViolationException e) {
-			throw new ProductException(AppConstants.PRODUCT_ALREADY_EXISTS);
-		}
+	    try {
+	        return productRepository.save(product);
+	    } catch (DataIntegrityViolationException e) {
+	        throw new ProductException(AppConstants.PRODUCT_ALREADY_EXISTS);
+	    }
 	}
 
 	@Override

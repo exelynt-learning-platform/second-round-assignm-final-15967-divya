@@ -11,7 +11,7 @@ import com.example.demo.DTO.LoginRequest;
 import com.example.demo.DTO.LoginResponse;
 import com.example.demo.DTO.RegisterRequest;
 import com.example.demo.Entity.User;
-import com.example.demo.Mappers.UserMapper;
+import com.example.demo.constants.AppConstants;
 import com.example.demo.security.JwtUtil;
 import com.example.demo.service.UserService;
 
@@ -27,17 +27,20 @@ public class AuthController {
 	@Autowired
 	private JwtUtil jwtUtil;
 
-	@Autowired
-	private UserMapper userMapper;
 
 	@PostMapping("/register")
 	public ResponseEntity<String> register(@Valid @RequestBody RegisterRequest request) {
 
-		User user = userMapper.toUser(request);
+		User user = new User();
+		user.setName(request.getName());
+		user.setEmail(request.getEmail());
+		user.setPassword(request.getPassword());
+		user.setRole(request.getRole());
+
 
 		userService.register(user);
 
-		return ResponseEntity.ok("User registered successfully");
+		return ResponseEntity.ok(AppConstants.USER_REGISTERED_SUCCESS);
 	}
 
 	@PostMapping("/login")

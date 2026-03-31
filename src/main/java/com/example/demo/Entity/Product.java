@@ -49,7 +49,6 @@ public class Product {
 
 	@ManyToOne
 	@JoinColumn(name = "user_id")
-	@NotNull(message = "User is required") // ✅ added validation
 	private User user;
 
 	private boolean isDeleted = false;

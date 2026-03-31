@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import com.example.demo.Entity.Product;
 import com.example.demo.config.CartConfig;
 import com.example.demo.constants.AppConstants;
+import com.example.demo.exception.ProductNotFoundException;
 import com.example.demo.security.SecurityUtil;
 import com.example.demo.service.ProductService;
 
@@ -53,7 +54,7 @@ public class ProductController {
 
 		log.info("Fetching products for user: {}", email);
 
-		Page<Product> products = productService.getProductsByOwner(email, page, size);
+	    Page<Product> products = productService.getProductsByOwner(email, finalPage, finalSize);
 
 		return ResponseEntity.ok(products);
 	}
@@ -105,6 +106,21 @@ public class ProductController {
 		productService.delete(id);
 
 		return ResponseEntity.ok(AppConstants.PRODUCT_DELETED);
+	}	
+	
+	@GetMapping("/getAllproducts")
+	public ResponseEntity<?> getAllProducts(@RequestParam(name = "page", defaultValue = "0") int page,
+			@RequestParam(name = "size", defaultValue = "10") int size) {
+
+		Page<Product> products = productService.getAllProducts(page, size);
+
+		if (products.isEmpty()) {
+			throw new ProductNotFoundException(AppConstants.PRODUCT_NOT_FOUND);
+		}
+
+		return ResponseEntity.ok(products);
 	}
+	
+	
 
 }

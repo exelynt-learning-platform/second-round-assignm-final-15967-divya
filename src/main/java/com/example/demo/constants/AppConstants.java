@@ -28,5 +28,7 @@ public final class AppConstants {
     public static final String ADDRESS_TOO_SHORT = "Shipping address is too short";
     public static final String ADDRESS_TOO_LONG = "Shipping address is too long";
 
+    public static final String USER_REGISTERED_SUCCESS = "User registered successfully";
+
 
 }
