@@ -96,7 +96,7 @@ public class OrderServiceImpl implements OrderService {
 					.orElseThrow(() -> new OrderException(AppConstants.PRODUCT_NOT_FOUND));
 
 			if (product.isDeleted()) {
-				throw new OrderException("Product is no longer available");
+				throw new OrderException(AppConstants.PRODUCT_NOT_FOUND);
 			}
 		}
 	}

@@ -29,10 +29,7 @@ public class UserService {
 		}
 
 		user.setPassword(passwordEncoder.encode(user.getPassword()));
-
-		if (user.getRole() == null || user.getRole().isBlank()) {
-			user.setRole(Role.ROLE_USER.name());
-		}
+	    user.setRole(Role.ROLE_USER.name());
 
 		return userRepository.save(user);
 	}

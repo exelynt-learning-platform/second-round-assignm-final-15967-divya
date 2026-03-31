@@ -64,6 +64,9 @@ public class CartServiceImpl implements CartService {
 		validateStock(product, quantity);
 
 		Cart cart = getCartByUserAndProduct(user, product);
+		if (cart == null) {
+			throw new CartException(AppConstants.CART_NOT_FOUND);
+		}
 
 		return updateExistingCart(cart, product, quantity);
 	}
@@ -99,9 +102,7 @@ public class CartServiceImpl implements CartService {
 		}
 
 		if (quantity > cartConfig.getMaxQuantity()) {
-			throw new CartException(
-				AppConstants.MAX_QUANTITY_EXCEEDED + cartConfig.getMaxQuantity()
-			);
+			throw new CartException(AppConstants.MAX_QUANTITY_EXCEEDED + cartConfig.getMaxQuantity());
 		}
 	}
 
@@ -125,7 +126,7 @@ public class CartServiceImpl implements CartService {
 
 		int newQuantity = existingCart.getQuantity() + quantity;
 
-	    validateQuantity(newQuantity); 
+		validateQuantity(newQuantity);
 
 		validateStock(product, newQuantity);
 
@@ -154,14 +155,11 @@ public class CartServiceImpl implements CartService {
 	}
 
 	private User getUserByEmail(String email) {
-		return userRepository.findByEmail(email)
-			.orElseThrow(() -> new CartException(AppConstants.USER_NOT_FOUND));
+		return userRepository.findByEmail(email).orElseThrow(() -> new CartException(AppConstants.USER_NOT_FOUND));
 	}
 
 	private Product getProductById(Integer productId) {
 		return productRepository.findById(productId)
-			.orElseThrow(() -> new CartException(
-				AppConstants.PRODUCT_NOT_FOUND + productId
-			));
+				.orElseThrow(() -> new CartException(AppConstants.PRODUCT_NOT_FOUND + productId));
 	}
 }

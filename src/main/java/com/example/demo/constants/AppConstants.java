@@ -31,7 +31,8 @@ public final class AppConstants {
     public static final String USER_REGISTERED_SUCCESS = "User registered successfully";
     public static final String DATABASE_ERROR =  "Database error while saving product";
     public static final String EMPTY_EMAIL =  "Email cannot be empty";
+    public static final String PRODUCT_REMOVED_FROM_CART = "PRODUCT_REMOVED_SUCCESS";
 
-
+    public static final String NO_ORDERS_FOUND= "ORDERS NOT FOUND";
 
 }

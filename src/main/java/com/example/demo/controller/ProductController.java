@@ -51,7 +51,8 @@ public class ProductController {
 	// ✅ GET PRODUCTS BY OWNER (PAGINATED)
 	@GetMapping
 	public ResponseEntity<Page<Product>> getProductsByOwner(@RequestParam(required = false) Integer page,
-			@RequestParam(required = false) Integer size) {
+			@RequestParam(required = false) Integer size,
+			 @RequestParam(defaultValue = "asc") String sortDir) {
 
 		String email = SecurityUtil.getCurrentUserEmail();
 		int finalPage = (page != null) ? page : cartConfig.getDefaultPage();
@@ -59,7 +60,7 @@ public class ProductController {
 
 		log.info("Fetching products for user: {}", email);
 
-	    Page<Product> products = productService.getProductsByOwner(email, finalPage, finalSize);
+	    Page<Product> products = productService.getProductsByOwner(email, finalPage, finalSize,sortDir);
 
 		return ResponseEntity.ok(products);
 	}
@@ -92,13 +93,14 @@ public class ProductController {
 
 	// ✅ DELETE
 	@DeleteMapping("/{id}")
-	public ResponseEntity<String> delete(@PathVariable("id") Integer id) {
+	public ResponseEntity<?> delete(@PathVariable("id") Integer id) {
 
 		log.info("Deleting product id: {}", id);
 
-		productService.delete(id);
-
-		return ResponseEntity.ok(AppConstants.PRODUCT_DELETED);
+		boolean delete = productService.delete(id);
+		return delete
+		        ? ResponseEntity.status(HttpStatus.ACCEPTED).body(AppConstants.PRODUCT_DELETED)
+		        : ResponseEntity.status(HttpStatus.NOT_FOUND).body(AppConstants.PRODUCT_NOT_FOUND);
 	}	
 	
 	@GetMapping("/getAllproducts")
@@ -106,11 +108,6 @@ public class ProductController {
 			@RequestParam(name = "size", defaultValue = "10") int size) {
 
 		Page<Product> products = productService.getAllProducts(page, size);
-
-		if (products.isEmpty()) {
-			throw new ProductNotFoundException(AppConstants.PRODUCT_NOT_FOUND);
-		}
-
 		return ResponseEntity.ok(products);
 	}
 	

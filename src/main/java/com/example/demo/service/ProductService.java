@@ -8,7 +8,7 @@ public interface ProductService {
 
 	Product create(Product product, String email);
 
-	Page<Product> getProductsByOwner(String email, int page, int size);
+	Page<Product> getProductsByOwner(String email, int page, int size,String sortDir);
 
 	Product getById(int id);
 

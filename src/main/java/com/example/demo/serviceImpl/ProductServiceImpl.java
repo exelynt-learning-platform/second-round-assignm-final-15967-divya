@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.example.demo.Entity.Product;
 import com.example.demo.Entity.User;
+import com.example.demo.config.CartConfig;
 import com.example.demo.constants.AppConstants;
 import com.example.demo.exception.ProductException;
 import com.example.demo.repository.ProductRepository;
@@ -35,6 +36,9 @@ public class ProductServiceImpl implements ProductService {
 	@Autowired
 	private UserRepository userRepository;
 
+	@Autowired
+	private CartConfig cartConfig;
+
 	@Override
 	@CacheEvict(value = "productsCache", allEntries = true)
 	@Transactional(isolation = Isolation.SERIALIZABLE)
@@ -43,11 +47,12 @@ public class ProductServiceImpl implements ProductService {
 		User user = userRepository.findByEmail(email)
 				.orElseThrow(() -> new ProductException(AppConstants.USER_NOT_FOUND));
 
-		boolean exists = productRepository.existsByNameAndUser(product.getName(), user);
+		boolean exists = productRepository.existsByNameAndUserAndIsDeletedFalse(product.getName(), user);
 
 		if (exists) {
 			throw new ProductException(AppConstants.PRODUCT_ALREADY_EXISTS);
 		}
+		validateProductFields(product);
 
 		product.setUser(user);
 
@@ -59,10 +64,14 @@ public class ProductServiceImpl implements ProductService {
 	}
 
 	@Override
-	@Cacheable(value = "productsCache", key = "{#email, #page, #size, #sort}")
-	public Page<Product> getProductsByOwner(String email, int page, int size) {
+	@Cacheable(value = "productsCache", key = "{#email, #page, #size, #sortDir}")
+	public Page<Product> getProductsByOwner(String email, int page, int size, String sortDir) {
 
-		Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
+
+		Sort sort = sortDir.equalsIgnoreCase("asc") 
+		        ? Sort.by("id").ascending() 
+		        : Sort.by("id").descending();
+		Pageable pageable = PageRequest.of(page, size, sort);
 
 		User user = userRepository.findByEmail(email)
 				.orElseThrow(() -> new ProductException(AppConstants.USER_NOT_FOUND));
@@ -100,12 +109,13 @@ public class ProductServiceImpl implements ProductService {
 
 		validateProductOwnership(existingProduct, currentUser);
 
-		boolean exists = productRepository.existsByNameAndUserAndIdNot(updatedProduct.getName(), currentUser, id);
+		boolean exists = productRepository.existsByNameAndUserAndIdNotAndIsDeletedFalse(updatedProduct.getName(), currentUser, id);
 
 		if (exists) {
 			throw new ProductException(AppConstants.PRODUCT_ALREADY_EXISTS);
 		}
 
+		validateProductFields(updatedProduct);
 		existingProduct.setName(updatedProduct.getName());
 		existingProduct.setPrice(updatedProduct.getPrice());
 		existingProduct.setDescription(updatedProduct.getDescription());
@@ -156,5 +166,32 @@ public class ProductServiceImpl implements ProductService {
 		}
 
 		return products;
+	}
+
+	private void validateProductFields(Product updatedProduct) {
+
+		Integer stock = updatedProduct.getStockQuantity();
+
+		// Null check
+		if (stock == null) {
+			throw new ProductException(AppConstants.INVALID_QUANTITY);
+		}
+
+		// Min validation
+		if (stock < cartConfig.getMinQuantity()) {
+			throw new ProductException(AppConstants.INVALID_QUANTITY);
+		}
+
+		// Max validation
+		if (stock > cartConfig.getMaxQuantity()) {
+			throw new ProductException(AppConstants.MAX_QUANTITY_EXCEEDED + cartConfig.getMaxQuantity());
+		}
+
+		// Image URL validation
+		String imageUrl = updatedProduct.getImageUrl();
+
+		if (imageUrl != null && imageUrl.isBlank()) {
+			throw new ProductException(AppConstants.INVALID_PRODUCT);
+		}
 	}
 }

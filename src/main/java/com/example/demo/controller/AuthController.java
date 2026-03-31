@@ -1,5 +1,7 @@
 package com.example.demo.controller;
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -30,12 +32,14 @@ public class AuthController {
 
 	@PostMapping("/register")
 	public ResponseEntity<String> register(@Valid @RequestBody RegisterRequest request) {
+	    if (!List.of("ROLE_USER", "ROLE_ADMIN").contains(request.getRole())) {
+	        throw new IllegalArgumentException("Invalid role");
+	    }
 
 		User user = new User();
 		user.setName(request.getName());
 		user.setEmail(request.getEmail());
 		user.setPassword(request.getPassword());
-		user.setRole(request.getRole());
 
 
 		userService.register(user);

@@ -13,12 +13,12 @@ import jakarta.transaction.Transactional;
 
 public interface ProductRepository extends JpaRepository<Product, Integer> {
 	
-	boolean existsByNameAndUser(String name, User user);	
+	boolean existsByNameAndUserAndIsDeletedFalse(String name, User user);	
 
 	Page<Product> findByUser(User userid, Pageable pageable);
 
 	
 	Page<Product> findByIsDeleted(boolean isDeleted, Pageable pageable);
 
-	boolean existsByNameAndUserAndIdNot(String name, User user, Integer id);
+	boolean existsByNameAndUserAndIdNotAndIsDeletedFalse(String name, User user, Integer id);
 }
