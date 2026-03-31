@@ -2,6 +2,7 @@ package com.example.demo.serviceImpl;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -11,6 +12,7 @@ import com.example.demo.Entity.Order;
 import com.example.demo.Entity.OrderItem;
 import com.example.demo.Entity.Product;
 import com.example.demo.Entity.User;
+import com.example.demo.config.CartConfig;
 import com.example.demo.constants.AppConstants;
 import com.example.demo.enums.PaymentStatus;
 import com.example.demo.exception.OrderException;
@@ -44,7 +46,8 @@ public class OrderServiceImpl implements OrderService {
 
 	@Autowired
 	private ProductValidationService productValidationService;
-
+	@Autowired
+	private CartConfig cartConfig;
 	@Transactional
 	@Override
 	public Order placeOrder(String email, String shippingAddress) {
@@ -79,7 +82,8 @@ public class OrderServiceImpl implements OrderService {
 
 		for (Cart cart : cartItems) {
 
-			if (cart.getUser() == null || !cart.getUser().getId().equals(user.getId())) {
+			if (cart.getUser() == null || !Objects.equals(cart.getUser().getId(), user.getId())) {
+
 				throw new OrderException(AppConstants.UNAUTHORIZED_PRODUCT_ACCESS);
 			}
 
@@ -93,7 +97,6 @@ public class OrderServiceImpl implements OrderService {
 			if (product.isDeleted()) {
 				throw new OrderException("Product is no longer available");
 			}
-
 		}
 	}
 
@@ -111,51 +114,61 @@ public class OrderServiceImpl implements OrderService {
 	// ================= HELPER METHODS =================
 	private double processCartItems(List<Cart> cartItems, Order order) {
 
-	    double totalPrice = 0;
+		double totalPrice = 0;
 
-	    for (Cart cart : cartItems) {
+		for (Cart cart : cartItems) {
 
-	        // ✅ Validate user ownership
-	        if (cart.getUser() == null ||
-	            !cart.getUser().getId().equals(order.getUser().getId())) {
+			// ✅ Validate user ownership
+			if (cart.getUser() == null || !cart.getUser().getId().equals(order.getUser().getId())) {
 
-	            throw new OrderException(AppConstants.UNAUTHORIZED_PRODUCT_ACCESS);
-	        }
+				throw new OrderException(AppConstants.UNAUTHORIZED_PRODUCT_ACCESS);
+			}
 
-	        // ✅ Null check for product in cart
-	        if (cart.getProduct() == null || cart.getProduct().getId() == null) {
-	            throw new OrderException(AppConstants.PRODUCT_NOT_FOUND);
-	        }
+			// ✅ Null check for product in cart
+			if (cart.getProduct() == null || cart.getProduct().getId() == null) {
+				throw new OrderException(AppConstants.PRODUCT_NOT_FOUND);
+			}
 
-	        // ✅ Fetch latest product from DB
-	        Product product = productRepository.findById(cart.getProduct().getId())
-	                .orElseThrow(() -> new OrderException(AppConstants.PRODUCT_NOT_FOUND));
+			// ✅ Fetch latest product from DB
+			Product product = productRepository.findById(cart.getProduct().getId())
+					.orElseThrow(() -> new OrderException(AppConstants.PRODUCT_NOT_FOUND));
 
-	        // ❗ Check if product is deleted
-	        if (product.isDeleted()) {
-	            throw new OrderException("Product is no longer available");
-	        }
+			// ❗ Check if product is deleted
+			if (product.isDeleted()) {
+				throw new OrderException("Product is no longer available");
+			}
 
-	        // ✅ Stock validation
-	        productValidationService.validateStock(product, cart.getQuantity());
+			// ✅ Stock validation
+			productValidationService.validateStock(product, cart.getQuantity());
 
-	        // ✅ Calculate total
-	        totalPrice += cart.getTotalPrice();
+			// ✅ Calculate total
+			totalPrice += cart.getTotalPrice();
 
-	        // ✅ Reduce stock
-	        reduceStock(product, cart.getQuantity());
+			// ✅ Reduce stock
+			reduceStock(product, cart.getQuantity());
 
-	        // ✅ Save order item
-	        saveOrderItem(order, cart, product);
-	    }
+			// ✅ Save order item
+			saveOrderItem(order, cart, product);
+		}
 
-	    return totalPrice;
+		return totalPrice;
 	}
 
-	private void validateShippingAddress(String address) {
-		if (address == null || address.trim().length() < 10 || address.length() > 200) {
-			throw new OrderException(AppConstants.INVALID_ADDRESS);
-		}
+	private void validateShippingAddress(String shippingAddress) {
+
+	    if (shippingAddress == null || shippingAddress.trim().isEmpty()) {
+	        throw new OrderException(AppConstants.ADDRESS_EMPTY);
+	    }
+
+	    int length = shippingAddress.trim().length();
+
+	    if (length < cartConfig.getMinAddressLength()) {
+	        throw new OrderException(AppConstants.ADDRESS_TOO_SHORT);
+	    }
+
+	    if (length > cartConfig.getMaxAddressLength()) {
+	        throw new OrderException(AppConstants.ADDRESS_TOO_LONG);
+	    }
 	}
 
 	private User getUserByEmail(String email) {

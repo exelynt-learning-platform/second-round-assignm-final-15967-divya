@@ -1,5 +1,7 @@
 package com.example.demo.serviceImpl;
 
+import java.util.Objects;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -117,14 +119,17 @@ public class ProductServiceImpl implements ProductService {
 		return true;
 	}
 
+
 	private void validateProductOwnership(Product product, User currentUser) {
 
-		if (product.getUser() == null || !product.getUser().getId().equals(currentUser.getId())) {
+	    if (product == null || product.getUser() == null || currentUser == null) {
+	        throw new RuntimeException(AppConstants.UNAUTHORIZED_PRODUCT_ACCESS);
+	    }
 
-			throw new RuntimeException(AppConstants.UNAUTHORIZED_PRODUCT_ACCESS);
-		}
+	    if (!Objects.equals(product.getUser().getId(), currentUser.getId())) {
+	        throw new RuntimeException(AppConstants.UNAUTHORIZED_PRODUCT_ACCESS);
+	    }
 	}
-
 	public Page<Product> getAllProducts(int page, int size) {
 
 		Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());

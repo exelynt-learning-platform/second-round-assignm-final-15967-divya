@@ -11,6 +11,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.AllArgsConstructor;
@@ -39,12 +40,17 @@ public class Product {
 
 	@Positive(message = "Price must be greater than 0")
 	private double price;
+
 	@PositiveOrZero(message = "Stock cannot be negative")
 	private int stockQuantity;
+
 	@NotBlank(message = "Image URL is required")
 	private String imageUrl;
+
 	@ManyToOne
 	@JoinColumn(name = "user_id")
+	@NotNull(message = "User is required") // ✅ added validation
 	private User user;
+
 	private boolean isDeleted = false;
 }

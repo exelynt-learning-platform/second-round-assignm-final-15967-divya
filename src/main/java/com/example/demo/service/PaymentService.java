@@ -23,6 +23,9 @@ public class PaymentService {
 	@Value("${app.frontend.cancel-url}")
 	private String cancelUrl;
 
+	  @Value("${payment.currency}")
+	    private String currency;
+	
 	public String createPaymentSession(Integer orderId) throws Exception {
 
 		Order order = orderRepository.findById(orderId).orElseThrow(() -> new OrderException("Order not found"));
@@ -37,7 +40,7 @@ public class PaymentService {
 				.addLineItem(
 						SessionCreateParams.LineItem.builder().setQuantity(1L)
 								.setPriceData(
-										SessionCreateParams.LineItem.PriceData.builder().setCurrency("inr")
+										SessionCreateParams.LineItem.PriceData.builder().setCurrency(currency)
 												.setUnitAmount((long) (order.getTotalPrice() * 100))
 												.setProductData(SessionCreateParams.LineItem.PriceData.ProductData
 														.builder().setName("Order Payment").build())

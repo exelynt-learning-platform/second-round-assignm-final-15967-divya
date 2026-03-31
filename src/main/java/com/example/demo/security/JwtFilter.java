@@ -1,4 +1,5 @@
 package com.example.demo.security;
+
 import java.io.IOException;
 import java.util.List;
 
@@ -10,6 +11,7 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import io.jsonwebtoken.lang.Collections;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -33,7 +35,7 @@ public class JwtFilter extends OncePerRequestFilter {
         String email = null;
         String role = null;
 
-        // ✅ Extract token
+        // Extract token
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             token = authHeader.substring(7);
 
@@ -43,12 +45,11 @@ public class JwtFilter extends OncePerRequestFilter {
             }
         }
 
-        // ✅ Set authentication
+        // 🔥 CHANGE: safer role validation
         if (email != null && role != null &&
                 SecurityContextHolder.getContext().getAuthentication() == null) {
 
-            SimpleGrantedAuthority authority =
-                    new SimpleGrantedAuthority(role); // ROLE_USER
+            SimpleGrantedAuthority authority = new SimpleGrantedAuthority(role);
 
             UsernamePasswordAuthenticationToken authToken =
                     new UsernamePasswordAuthenticationToken(

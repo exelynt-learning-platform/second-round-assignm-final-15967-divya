@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import com.example.demo.Entity.Cart;
 import com.example.demo.Entity.Product;
 import com.example.demo.Entity.User;
+import com.example.demo.config.CartConfig;
 import com.example.demo.constants.AppConstants;
 import com.example.demo.exception.CartException;
 import com.example.demo.repository.CartRepository;
@@ -27,9 +28,12 @@ public class CartServiceImpl implements CartService {
 
 	@Autowired
 	private ProductRepository productRepository;
-	
+
 	@Autowired
 	private ProductValidationService productValidationService;
+
+	@Autowired
+	private CartConfig cartConfig;
 
 	@Override
 	public Cart addToCart(String email, Integer productId, int quantity) {
@@ -37,13 +41,31 @@ public class CartServiceImpl implements CartService {
 		User user = getUserByEmail(email);
 		Product product = getProductById(productId);
 
+		validateQuantity(quantity);
+
 		Cart existingCart = cartRepository.findByUserAndProduct(user, product);
 
 		if (existingCart != null) {
 			return updateExistingCart(existingCart, product, quantity);
 		}
 
+		validateStock(product, quantity);
+
 		return createNewCart(user, product, quantity);
+	}
+
+	@Override
+	public Cart updateCart(String email, Integer productId, int quantity) {
+
+		User user = getUserByEmail(email);
+		Product product = getProductById(productId);
+
+		validateQuantity(quantity);
+		validateStock(product, quantity);
+
+		Cart cart = getCartByUserAndProduct(user, product);
+
+		return updateExistingCart(cart, product, quantity);
 	}
 
 	@Override
@@ -51,46 +73,14 @@ public class CartServiceImpl implements CartService {
 		User user = getUserByEmail(email);
 		return cartRepository.findByUserId(user.getId());
 	}
-	@Override
-	public Cart updateCart(String email, Integer productId, int quantity) {
 
-	    // ✅ Get user
-	    User user = getUserByEmail(email);
-
-	    // ✅ Get product
-	    Product product = getProductById(productId);
-
-	    // ❗ Validate quantity (using constants)
-	    if (quantity <= 0) {
-	        throw new CartException(AppConstants.INVALID_QUANTITY);
-	    }
-
-	    if (quantity > AppConstants.MAX_CART_QUANTITY) {
-	        throw new CartException(
-	            AppConstants.MAX_QUANTITY_EXCEEDED + AppConstants.MAX_CART_QUANTITY
-	        );
-	    }
-
-	    // ❗ Validate stock
-	    productValidationService.validateStock(product, quantity);
-
-	    // ✅ Fetch existing cart
-	    Cart cart = cartRepository.findByUserAndProduct(user, product);
-
-	    if (cart == null) {
-	        throw new CartException(AppConstants.CART_NOT_FOUND);
-	    }
-
-	    // ✅ Reuse existing logic (updateExistingCart)
-	    return updateExistingCart(cart, product, quantity);
-	}
 	@Override
 	public boolean removeFromCart(String email, Integer productId) {
 
 		User user = getUserByEmail(email);
 		Product product = getProductById(productId);
 
-		Cart cart = cartRepository.findByUserAndProduct(user, product);
+		Cart cart = getCartByUserAndProduct(user, product);
 
 		if (cart == null) {
 			return false;
@@ -100,38 +90,58 @@ public class CartServiceImpl implements CartService {
 		return true;
 	}
 
-	// ================= PRIVATE METHODS =================
+	// ================= COMMON VALIDATION =================
+
+	private void validateQuantity(int quantity) {
+
+		if (quantity < cartConfig.getMinQuantity()) {
+			throw new CartException(AppConstants.INVALID_QUANTITY);
+		}
+
+		if (quantity > cartConfig.getMaxQuantity()) {
+			throw new CartException(
+				AppConstants.MAX_QUANTITY_EXCEEDED + cartConfig.getMaxQuantity()
+			);
+		}
+	}
+
+	private void validateStock(Product product, int quantity) {
+		productValidationService.validateStock(product, quantity);
+	}
+
+	private Cart getCartByUserAndProduct(User user, Product product) {
+		Cart cart = cartRepository.findByUserAndProduct(user, product);
+
+		if (cart == null) {
+			throw new CartException(AppConstants.CART_NOT_FOUND);
+		}
+
+		return cart;
+	}
+
+	// ================= BUSINESS METHODS =================
+
 	private Cart updateExistingCart(Cart existingCart, Product product, int quantity) {
 
-	    // ✅ Null safety check
-	    if (existingCart.getProduct() == null) {
-	        throw new CartException(AppConstants.PRODUCT_NOT_FOUND);
-	    }
+		int newQuantity = existingCart.getQuantity() + quantity;
 
-	    Product cartProduct = existingCart.getProduct();
+		if (newQuantity > cartConfig.getMaxQuantity()) {
+			throw new CartException(
+				AppConstants.MAX_QUANTITY_EXCEEDED + cartConfig.getMaxQuantity()
+			);
+		}
 
-	    int newQuantity = existingCart.getQuantity() + quantity;
+		validateStock(product, newQuantity);
 
-	    // ❗ Validate max cart quantity
-	    if (newQuantity > AppConstants.MAX_CART_QUANTITY) {
-	        throw new CartException(
-	            AppConstants.MAX_QUANTITY_EXCEEDED + AppConstants.MAX_CART_QUANTITY
-	        );
-	    }
+		existingCart.setQuantity(newQuantity);
+		existingCart.setPrice(product.getPrice());
+		existingCart.setTotalPrice(calculateTotalPrice(product, newQuantity));
 
-	    // ❗ Validate stock using latest product data
-	    productValidationService.validateStock(cartProduct, newQuantity);
-
-	    // ❗ Recalculate using latest product info
-	    existingCart.setQuantity(newQuantity);
-	    existingCart.setPrice(cartProduct.getPrice());
-	    existingCart.setTotalPrice(calculateTotalPrice(cartProduct, newQuantity));
-
-	    return cartRepository.save(existingCart);
+		return cartRepository.save(existingCart);
 	}
+
 	private Cart createNewCart(User user, Product product, int quantity) {
 
-		productValidationService.validateStock(product, quantity);
 		Cart cart = new Cart();
 		cart.setUser(user);
 		cart.setProduct(product);
@@ -148,13 +158,14 @@ public class CartServiceImpl implements CartService {
 	}
 
 	private User getUserByEmail(String email) {
-		return userRepository.findByEmail(email).orElseThrow(() -> new CartException(AppConstants.USER_NOT_FOUND));
+		return userRepository.findByEmail(email)
+			.orElseThrow(() -> new CartException(AppConstants.USER_NOT_FOUND));
 	}
 
 	private Product getProductById(Integer productId) {
 		return productRepository.findById(productId)
-				.orElseThrow(() -> new CartException(AppConstants.PRODUCT_NOT_FOUND + productId));
+			.orElseThrow(() -> new CartException(
+				AppConstants.PRODUCT_NOT_FOUND + productId
+			));
 	}
-
-
 }
