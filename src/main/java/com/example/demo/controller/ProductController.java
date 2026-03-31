@@ -1,5 +1,7 @@
 package com.example.demo.controller;
 
+import java.security.Principal;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
@@ -14,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.demo.DTO.ProductRequestDTO;
 import com.example.demo.Entity.Product;
 import com.example.demo.config.CartConfig;
 import com.example.demo.constants.AppConstants;
@@ -36,16 +39,13 @@ public class ProductController {
 
 	// ✅ CREATE PRODUCT
 	@PostMapping
-	public ResponseEntity<Product> create(@Valid @RequestBody Product product) {
+	public ResponseEntity<Product> create(
+	        @Valid @RequestBody ProductRequestDTO request,
+	        Principal principal) {
 
-		String email = SecurityUtil.getCurrentUserEmail();
-
-
-		log.info("Creating product for user: {}", email);
-
-		Product savedProduct = productService.create(product, email);
-
-		return ResponseEntity.status(HttpStatus.CREATED).body(savedProduct);
+	    return ResponseEntity.ok(
+	        productService.create(request, principal.getName())
+	    );
 	}
 
 	// ✅ GET PRODUCTS BY OWNER (PAGINATED)

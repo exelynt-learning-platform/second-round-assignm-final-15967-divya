@@ -153,9 +153,15 @@ public class CartServiceImpl implements CartService {
 	private User getUserByEmail(String email) {
 		return userRepository.findByEmail(email).orElseThrow(() -> new CartException(AppConstants.USER_NOT_FOUND));
 	}
-
 	private Product getProductById(Integer productId) {
-		return productRepository.findById(productId)
-				.orElseThrow(() -> new CartException(AppConstants.PRODUCT_NOT_FOUND + productId));
+
+	    Product product = productRepository.findById(productId)
+	            .orElseThrow(() -> new CartException(AppConstants.PRODUCT_NOT_FOUND + productId));
+
+	    if (product.isDeleted()) {
+	        throw new CartException(AppConstants.PRODUCT_NOT_FOUND_IN_CART);
+	    }
+
+	    return product;
 	}
 }

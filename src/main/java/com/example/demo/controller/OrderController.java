@@ -3,6 +3,7 @@ package com.example.demo.controller;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -37,19 +38,22 @@ public class OrderController {
 	}
 
 
-
 	@GetMapping("/all")
-	public ResponseEntity<?> allOrders() {
+	public ResponseEntity<?> allOrders(
+	        @RequestParam(defaultValue = "0") int page,
+	        @RequestParam(defaultValue = "10") int size,
+	        @RequestParam(defaultValue = "id") String sortBy,
+	        @RequestParam(defaultValue = "desc") String sortDir) {
 
-	    log.info("Fetching all orders");
+	    log.info("Fetching all orders with pagination");
 
-	    List<Order> orders = orderService.getAllOrders();
+	    Page<Order> orders = orderService.getAllOrders(page, size, sortBy, sortDir);
 
 	    if (orders.isEmpty()) {
 	        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-	                .body(AppConstants.NO_ORDERS_FOUND); // 404
+	                .body(AppConstants.NO_ORDERS_FOUND);
 	    }
 
-	    return ResponseEntity.ok(orders); // 200
+	    return ResponseEntity.ok(orders);
 	}
 }

@@ -49,13 +49,13 @@ public class SecurityConfig {
 				.exceptionHandling(ex -> ex.accessDeniedHandler(accessDeniedHandler)
 						.authenticationEntryPoint(authenticationEntryPoint))
 				.authorizeHttpRequests(auth -> auth.requestMatchers("/auth/**").permitAll().requestMatchers("/cart/**")
-						.hasAuthority(Role.ROLE_USER.name()).requestMatchers("/orders/place")
-						.hasAuthority(Role.ROLE_USER.name()).requestMatchers("/orders/my")
-						.hasAuthority(Role.ROLE_USER.name()).requestMatchers("/payment/**")
-						.hasAuthority(Role.ROLE_USER.name()).requestMatchers("/products/getAllproducts")
-						.hasAuthority(Role.ROLE_USER.name()).requestMatchers("/products/**")
-						.hasAuthority(Role.ROLE_ADMIN.name()).requestMatchers("/orders/all")
-						.hasAuthority(Role.ROLE_ADMIN.name()).anyRequest().authenticated())
+						.hasAuthority(Authorities.USER).requestMatchers("/orders/place")
+						.hasAuthority(Authorities.USER).requestMatchers("/orders/my")
+						.hasAuthority(Authorities.USER).requestMatchers("/payment/**")
+						.hasAuthority(Authorities.USER).requestMatchers("/products/getAllproducts")
+						.hasAuthority(Authorities.ADMIN).requestMatchers("/products/**")
+						.hasAuthority(Authorities.ADMIN).requestMatchers("/orders/all")
+						.hasAuthority(Authorities.ADMIN).anyRequest().authenticated())
 				.sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
 		http.addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class);

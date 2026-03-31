@@ -1,19 +1,11 @@
 package com.example.demo.controller;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import com.example.demo.Entity.Cart;
 import com.example.demo.constants.AppConstants;
@@ -28,25 +20,53 @@ public class CartController {
 	private CartService cartService;
 
 	@PostMapping("/add/{productId}/{quantity}")
-	public Cart addToCart(@PathVariable Integer productId, @PathVariable int quantity) {
-		return cartService.addToCart(SecurityUtil.getCurrentUserEmail(), productId, quantity);
+	public ResponseEntity<Cart> addToCart(@PathVariable Integer productId,
+	                                      @PathVariable int quantity) {
+
+		Cart cart = cartService.addToCart(
+				SecurityUtil.getCurrentUserEmail(),
+				productId,
+				quantity
+		);
+
+		return ResponseEntity.status(HttpStatus.CREATED).body(cart);
 	}
 
 	@GetMapping("/my")
-	public List<Cart> getMyCart() {
-		return cartService.getMyCart(SecurityUtil.getCurrentUserEmail());
+	public ResponseEntity<List<Cart>> getMyCart() {
+
+		List<Cart> cartList = cartService.getMyCart(
+				SecurityUtil.getCurrentUserEmail()
+		);
+
+		return ResponseEntity.ok(cartList);
 	}
 
 	@PutMapping("/{productId}/{quantity}")
-	public Cart updateCart(@PathVariable Integer productId, @PathVariable int quantity) {
-		return cartService.updateCart(SecurityUtil.getCurrentUserEmail(), productId, quantity);
+	public ResponseEntity<Cart> updateCart(@PathVariable Integer productId,
+	                                        @PathVariable int quantity) {
+
+		Cart updatedCart = cartService.updateCart(
+				SecurityUtil.getCurrentUserEmail(),
+				productId,
+				quantity
+		);
+
+		return ResponseEntity.ok(updatedCart);
 	}
 
 	@DeleteMapping("/{productId}")
-	public ResponseEntity<?> remove(@PathVariable Integer productId) {
+	public ResponseEntity<String> remove(@PathVariable Integer productId) {
 
-		boolean isRemoved = cartService.removeFromCart(SecurityUtil.getCurrentUserEmail(), productId);
-		return isRemoved ? ResponseEntity.status(HttpStatus.ACCEPTED).body(AppConstants.CART_REMOVED_SUCCESS)
-				: ResponseEntity.status(HttpStatus.NOT_FOUND).body(AppConstants.PRODUCT_NOT_FOUND_IN_CART);
+		boolean isRemoved = cartService.removeFromCart(
+				SecurityUtil.getCurrentUserEmail(),
+				productId
+		);
+
+		return isRemoved
+				? ResponseEntity.status(HttpStatus.ACCEPTED)
+					.body(AppConstants.CART_REMOVED_SUCCESS)
+				: ResponseEntity.status(HttpStatus.NOT_FOUND)
+					.body(AppConstants.PRODUCT_NOT_FOUND_IN_CART);
 	}
 }

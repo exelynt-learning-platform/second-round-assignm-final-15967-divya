@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.example.demo.DTO.ProductRequestDTO;
 import com.example.demo.Entity.Product;
 import com.example.demo.Entity.User;
 import com.example.demo.config.CartConfig;
@@ -43,18 +44,18 @@ public class ProductServiceImpl implements ProductService {
 	@Override
 	@CacheEvict(value = "productsCache", allEntries = true)
 	@Transactional(isolation = Isolation.SERIALIZABLE)
-	public Product create(Product product, String email) {
+	public Product create(ProductRequestDTO dto, String email) {
 
 		User user = userRepository.findByEmail(email)
 				.orElseThrow(() -> new ProductException(AppConstants.USER_NOT_FOUND));
 
-		boolean exists = productRepository.existsByNameAndUserAndIsDeletedFalse(product.getName(), user);
+		boolean exists = productRepository.existsByNameAndUserAndIsDeletedFalse(dto.getName(), user);
 
 		if (exists) {
 			throw new ProductException(AppConstants.PRODUCT_ALREADY_EXISTS);
 		}
-		validateProductFields(product);
 
+		Product product = mapToEntity(dto);
 		product.setUser(user);
 
 		try {
@@ -67,17 +68,7 @@ public class ProductServiceImpl implements ProductService {
 	@Override
 	@Cacheable(value = "productsCache", key = "{#email, #page, #size,#sortBy,  #sortDir}")
 	public Page<Product> getProductsByOwner(String email, int page, int size, String sortBy, String sortDir) {
-
-		String validSortBy = ProductSortField.from(sortBy);
-		Sort.Direction direction;
-		try {
-			direction = Sort.Direction.fromString(sortDir);
-		} catch (IllegalArgumentException ex) {
-			throw new ProductException(AppConstants.INVALID_SORT_DIRECTION + sortDir);
-		}
-
-		Sort sort = Sort.by(direction, validSortBy);
-		Pageable pageable = PageRequest.of(page, size, sort);
+		Pageable pageable = createPageable(page, size, sortBy, sortDir);
 		User user = userRepository.findByEmail(email)
 				.orElseThrow(() -> new ProductException(AppConstants.USER_NOT_FOUND));
 
@@ -105,12 +96,8 @@ public class ProductServiceImpl implements ProductService {
 		User currentUser = userRepository.findByEmail(email)
 				.orElseThrow(() -> new ProductException(AppConstants.USER_NOT_FOUND));
 
-		Product existingProduct = productRepository.findById(id)
-				.orElseThrow(() -> new ProductException("Product not found with id: " + id));
-
-		if (existingProduct.isDeleted()) {
-			throw new ProductException("Product is no longer available");
-		}
+		Product existingProduct = productRepository.findByIdAndIsDeletedFalse(id)
+				.orElseThrow(() -> new ProductException("Product not found or deleted"));
 
 		validateProductOwnership(existingProduct, currentUser);
 
@@ -129,25 +116,25 @@ public class ProductServiceImpl implements ProductService {
 		return productRepository.save(existingProduct);
 	}
 
-	@CacheEvict(value = "productsCache", key = "#id")
+	@CacheEvict(value = "productsCache", allEntries = true)
 	public boolean delete(Integer id) {
 
-	    String email = SecurityUtil.getCurrentUserEmail();
+		String email = SecurityUtil.getCurrentUserEmail();
 
-	    User currentUser = userRepository.findByEmail(email)
-	            .orElseThrow(() -> new ProductException(AppConstants.USER_NOT_FOUND));
+		User currentUser = userRepository.findByEmail(email)
+				.orElseThrow(() -> new ProductException(AppConstants.USER_NOT_FOUND));
 
-	    Product product = productRepository.findById(id)
-	            .orElseThrow(() -> new ProductException(AppConstants.PRODUCT_NOT_FOUND + id));
+		Product product = productRepository.findById(id)
+				.orElseThrow(() -> new ProductException(AppConstants.PRODUCT_NOT_FOUND + id));
 
-	    validateProductOwnership(product, currentUser);
+		validateProductOwnership(product, currentUser);
 
-	    product.setDeleted(true);
-	    productRepository.save(product);
+		product.setDeleted(true);
+		productRepository.save(product);
 
-	    log.info("Product soft-deleted successfully. Id: {}", id);
+		log.info("Product soft-deleted successfully. Id: {}", id);
 
-	    return true;
+		return true;
 	}
 
 	private void validateProductOwnership(Product product, User currentUser) {
@@ -163,11 +150,7 @@ public class ProductServiceImpl implements ProductService {
 
 	public Page<Product> getAllProducts(int page, int size, String sortBy, String sortDir) {
 
-		String sortField = ProductSortField.from(sortBy);
-
-		Sort sort = sortDir.equalsIgnoreCase("asc") ? Sort.by(sortField).ascending() : Sort.by(sortField).descending();
-
-		Pageable pageable = PageRequest.of(page, size, sort);
+		Pageable pageable = createPageable(page, size, sortBy, sortDir);
 
 		Page<Product> products = productRepository.findByIsDeleted(false, pageable);
 
@@ -203,5 +186,37 @@ public class ProductServiceImpl implements ProductService {
 		if (imageUrl != null && imageUrl.isBlank()) {
 			throw new ProductException(AppConstants.INVALID_PRODUCT);
 		}
+	}
+
+	private Product mapToEntity(ProductRequestDTO dto) {
+
+		Product product = new Product();
+		product.setName(dto.getName());
+		product.setPrice(dto.getPrice());
+		product.setDescription(dto.getDescription());
+		product.setStockQuantity(dto.getStockQuantity());
+		product.setImageUrl(dto.getImageUrl());
+
+		return product;
+	}
+
+	private Pageable createPageable(int page, int size, String sortBy, String sortDir) {
+
+		int defaultPage = cartConfig.getDefaultPage();
+		int defaultSize = cartConfig.getDefaultSize();
+
+		int finalPage = (page < 0) ? defaultPage : page;
+		int finalSize = (size <= 0) ? defaultSize : size;
+
+		String validSortBy = ProductSortField.from(sortBy);
+
+		Sort.Direction direction;
+		try {
+			direction = Sort.Direction.fromString(sortDir);
+		} catch (Exception e) {
+			direction = Sort.Direction.DESC; // default fallback
+		}
+
+		return PageRequest.of(finalPage, finalSize, Sort.by(direction, validSortBy));
 	}
 }

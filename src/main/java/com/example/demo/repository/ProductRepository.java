@@ -1,15 +1,13 @@
 package com.example.demo.repository;
 
+import java.util.Optional;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
-import org.springframework.data.jpa.repository.Query;
 
 import com.example.demo.Entity.Product;
 import com.example.demo.Entity.User;
-
-import jakarta.transaction.Transactional;
 
 public interface ProductRepository extends JpaRepository<Product, Integer> {
 	
@@ -21,4 +19,6 @@ public interface ProductRepository extends JpaRepository<Product, Integer> {
 	Page<Product> findByIsDeleted(boolean isDeleted, Pageable pageable);
 
 	boolean existsByNameAndUserAndIdNotAndIsDeletedFalse(String name, User user, Integer id);
-}
+	
+	Optional<Product> findByIdAndIsDeletedFalse(Integer id);
+	}

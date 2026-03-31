@@ -20,7 +20,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "products", uniqueConstraints = { @UniqueConstraint(columnNames = { "name", "user_id" ,"is_deleted"}) })
+@Table(name = "products", uniqueConstraints = { @UniqueConstraint(columnNames = { "name", "user_id" }) })
 @SuppressWarnings("HibernateSQLQueryInspection")
 @SQLDelete(sql = "UPDATE products SET is_deleted = true WHERE id = ?")
 @Getter

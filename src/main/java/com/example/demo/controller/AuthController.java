@@ -14,6 +14,7 @@ import com.example.demo.DTO.LoginResponse;
 import com.example.demo.DTO.RegisterRequest;
 import com.example.demo.Entity.User;
 import com.example.demo.constants.AppConstants;
+import com.example.demo.enums.Role;
 import com.example.demo.security.JwtUtil;
 import com.example.demo.service.UserService;
 
@@ -29,19 +30,17 @@ public class AuthController {
 	@Autowired
 	private JwtUtil jwtUtil;
 
-
 	@PostMapping("/register")
 	public ResponseEntity<String> register(@Valid @RequestBody RegisterRequest request) {
-	    if (!List.of("ROLE_USER", "ROLE_ADMIN").contains(request.getRole())) {
-	        throw new IllegalArgumentException("Invalid role");
-	    }
+		if (!List.of("ROLE_USER", "ROLE_ADMIN").contains(request.getRole())) {
+			throw new IllegalArgumentException("Invalid role");
+		}
 
 		User user = new User();
 		user.setName(request.getName());
 		user.setEmail(request.getEmail());
 		user.setPassword(request.getPassword());
-		  user.setRole(request.getRole()); 
-
+		user.setRole(Role.ROLE_USER.name());
 
 		userService.register(user);
 
