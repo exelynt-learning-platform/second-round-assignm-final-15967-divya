@@ -2,7 +2,7 @@ name: Java CI Pipeline
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "master" ,"develop-the-backend-for-an-e-commerce-system-28151"]
 
 jobs:
   build:
